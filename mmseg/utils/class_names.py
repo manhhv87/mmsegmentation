@@ -495,6 +495,22 @@ dataset_aliases = {
 }
 
 
+def floodnet_classes():
+    """FloodNet class names for external use"""
+    return [
+        'background', 'building flooded', 'building non-flooded', 'road flooded',
+        'road non-flooded', 'water', 'tree', 'vehicle', 'pool', 'grass'
+    ]
+
+
+
+def floodnet_palette():
+    """floodnet palette for external use(same with cityscapes)"""
+    return [[0, 0, 0], [255, 0, 0], [0, 255, 0], [0, 255, 120], [0, 0, 255],
+            [255, 0, 255], [70, 70, 220], [102, 102, 156], [190, 153, 153],
+            [180, 165, 180]]
+
+
 def get_classes(dataset):
     """Get class names of a dataset."""
     alias2name = {}
