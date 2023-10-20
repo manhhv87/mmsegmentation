@@ -1,16 +1,19 @@
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
+
 data_preprocessor = dict(
     type='SegDataPreProcessor',
-    mean=[0.485, 0.456, 0.406],     
-    std=[0.229, 0.224, 0.225],      
+    mean=[0.485, 0.456, 0.406],
+    std=[0.229, 0.224, 0.225],
     bgr_to_rgb=True,
     pad_val=0,
     seg_pad_val=255)
+
 model = dict(
     type='EncoderDecoder',
     data_preprocessor=data_preprocessor,
     pretrained=None,
+
     backbone=dict(
         type='MixVisionTransformer',
         in_channels=3,
@@ -26,6 +29,7 @@ model = dict(
         drop_rate=0.0,
         attn_drop_rate=0.0,
         drop_path_rate=0.1),
+
     decode_head=dict(
         type='SegformerHead',
         in_channels=[32, 64, 160, 256],
@@ -35,8 +39,10 @@ model = dict(
         num_classes=19,
         norm_cfg=norm_cfg,
         align_corners=False,
-        loss_decode=dict(
-            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
+        # loss_decode=dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
+        loss_decode=[dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.5),
+                dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.5)]),
+
     # model training and testing settings
     train_cfg=dict(),
     test_cfg=dict(mode='whole'))
