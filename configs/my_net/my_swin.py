@@ -2,7 +2,7 @@ _base_ = [
     '../_base_/models/upernet_swin.py', 
     '../_base_/datasets/floodnet.py',
     '../_base_/default_runtime.py', 
-    '../_base_/schedules/schedule_160k.py'
+    '../_base_/schedules/schedule_80k.py'
 ]
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
@@ -18,7 +18,7 @@ model = dict(
         use_abs_pos_embed=False,
         drop_path_rate=0.3,
         patch_norm=True),
-    decode_head=dict(in_channels=[96, 192, 384, 768], num_classes=9),
+    decode_head=dict(in_channels=[96, 192, 384, 768], num_classes=10),
     auxiliary_head=dict(in_channels=384, num_classes=9))
 
 # AdamW optimizer, no weight decay for position embedding & layer norm
@@ -43,7 +43,7 @@ param_scheduler = [
         eta_min=0.0,
         power=1.0,
         begin=1500,
-        end=160000,
+        end=80000,
         by_epoch=False,
     )
 ]
