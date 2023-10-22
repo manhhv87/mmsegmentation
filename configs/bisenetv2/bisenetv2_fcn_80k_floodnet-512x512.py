@@ -13,7 +13,7 @@ model = dict(data_preprocessor=data_preprocessor)
 
 model = dict(
     data_preprocessor=data_preprocessor,
-    backbone=dict(init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
+    backbone=dict(init_cfg=dict(_delete_=True, type='Pretrained', checkpoint=checkpoint)),
     decode_head=dict(num_classes=10))
 
 optim_wrapper = dict(
