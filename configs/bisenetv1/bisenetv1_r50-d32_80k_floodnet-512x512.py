@@ -7,7 +7,7 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint='https://download.openmmlab.com/mmsegmentation/v0.5/bisenetv1/bisenetv1_r50-d32_lr5e-3_4x4_512x512_160k_coco-stuff164k/bisenetv1_r50-d32_lr5e-3_4x4_512x512_160k_coco-stuff164k_20211101_040616-d2bb0df4.pth'
+checkpoint = 'https://download.openmmlab.com/mmsegmentation/v0.5/bisenetv1/bisenetv1_r50-d32_lr5e-3_4x4_512x512_160k_coco-stuff164k/bisenetv1_r50-d32_lr5e-3_4x4_512x512_160k_coco-stuff164k_20211101_040616-d2bb0df4.pth'
 
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 
@@ -19,9 +19,8 @@ model = dict(
         spatial_channels=(256, 256, 256, 512),
         out_channels=1024,
         backbone_cfg=dict(
-          type='ResNet', depth=50,
-          init_cfg=dict(type='Pretrained', checkpoint=checkpoint))
-          ),        
+            type='ResNet', depth=50,
+            init_cfg=dict(type='Pretrained', checkpoint=checkpoint))),
 
     decode_head=dict(in_channels=1024, channels=1024, num_classes=10),
 
@@ -64,9 +63,31 @@ param_scheduler = [
     )
 ]
 
-optimizer = dict(type='SGD', lr=0.005, momentum=0.9, weight_decay=0.0005)
-optim_wrapper = dict(type='OptimWrapper', optimizer=optimizer)
+optim_wrapper = dict(
+    _delete_=True,
+    type='OptimWrapper',
+    optimizer=dict(
+        type='AdamW', lr=0.00006, betas=(0.9, 0.999), weight_decay=0.01),
+    paramwise_cfg=dict(
+        custom_keys={
+            'pos_block': dict(decay_mult=0.),
+            'norm': dict(decay_mult=0.),
+            'head': dict(lr_mult=10.)
+        }))
 
-train_dataloader = dict(batch_size=4, num_workers=4)
+param_scheduler = [
+    dict(
+        type='LinearLR', start_factor=1e-6, by_epoch=False, begin=0, end=1500),
+    dict(
+        type='PolyLR',
+        eta_min=0.0,
+        power=1.0,
+        begin=1500,
+        end=80000,
+        by_epoch=False,
+    )
+]
+
+train_dataloader = dict(batch_size=2, num_workers=2)
 val_dataloader = dict(batch_size=1, num_workers=4)
 test_dataloader = val_dataloader
