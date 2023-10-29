@@ -425,11 +425,13 @@ class Decoder(nn.Module):
 
         self.p1 = FeatureRefinementHead(encoder_channels[-4], decode_channels)
 
+        # self.segmentation_head = nn.Sequential(ConvBNReLU(decode_channels, decode_channels),
+        #                                        nn.Dropout2d(p=dropout, inplace=True),
+        #                                        Conv(decode_channels, num_classes, kernel_size=1))
+
         self.segmentation_head = nn.Sequential(ConvBNReLU(decode_channels, decode_channels),
-                                               nn.Dropout2d(
-                                                   p=dropout, inplace=True),
-                                               Conv(decode_channels, num_classes, kernel_size=1))
-        # self.init_weight()
+                                               nn.Dropout2d(p=dropout, inplace=True))
+        self.init_weight()
 
     def forward(self, res1, res2, res3, res4, h, w):
         x = self.b4(self.pre_conv(res4))
@@ -447,12 +449,12 @@ class Decoder(nn.Module):
 
         return x
 
-    # def init_weight(self):
-    #     for m in self.children():
-    #         if isinstance(m, nn.Conv2d):
-    #             nn.init.kaiming_normal_(m.weight, a=1)
-    #             if m.bias is not None:
-    #                 nn.init.constant_(m.bias, 0)
+    def init_weight(self):
+        for m in self.children():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, a=1)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
 
 
 @MODELS.register_module()
@@ -479,5 +481,5 @@ class UnetformerHead(BaseDecodeHead):
 
         # res1, res2, res3, res4 = self.backbone(x)
         x = self.decoder(inputs[0], inputs[1], inputs[2], inputs[3], h, w)
-        # x = self.cls_seg(x)
+        x = self.cls_seg(x)
         return x
