@@ -5,7 +5,6 @@ import torch.nn.functional as F
 from einops import rearrange, repeat
 
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
-import timm
 
 from mmseg.models.decode_heads.decode_head import BaseDecodeHead
 from mmseg.registry import MODELS
@@ -393,15 +392,14 @@ class AuxHead(nn.Module):
         return feat
 
 
-@MODELS.register_module()
-class UnetformerHead(BaseDecodeHead):
-    def __init__(self, window_size=8, **kwargs):
-        super(UnetformerHead, self).__init__(**kwargs)
-
-        encoder_channels = self.in_channels
-        decode_channels = self.channels
-        dropout = self.dropout_ratio
-        num_classes = self.num_classes
+class Decoder(nn.Module):
+    def __init__(self,
+                 encoder_channels=(64, 128, 256, 512),
+                 decode_channels=64,
+                 dropout=0.1,
+                 window_size=8,
+                 num_classes=6):
+        super(Decoder, self).__init__()
 
         self.pre_conv = ConvBN(
             encoder_channels[-1], decode_channels, kernel_size=1)
@@ -431,48 +429,55 @@ class UnetformerHead(BaseDecodeHead):
                                                nn.Dropout2d(
                                                    p=dropout, inplace=True),
                                                Conv(decode_channels, num_classes, kernel_size=1))
-        self.init_weight()
+        # self.init_weight()
 
     def forward(self, res1, res2, res3, res4, h, w):
-        if self.training:
-            x = self.b4(self.pre_conv(res4))
-            h4 = self.up4(x)
+        x = self.b4(self.pre_conv(res4))
+        x = self.p3(x, res3)
+        x = self.b3(x)
 
-            x = self.p3(x, res3)
-            x = self.b3(x)
-            h3 = self.up3(x)
+        x = self.p2(x, res2)
+        x = self.b2(x)
 
-            x = self.p2(x, res2)
-            x = self.b2(x)
-            h2 = x
-            x = self.p1(x, res1)
-            x = self.segmentation_head(x)
-            x = F.interpolate(x, size=(h, w), mode='bilinear',
-                              align_corners=False)
+        x = self.p1(x, res1)
 
-            ah = h4 + h3 + h2
-            ah = self.aux_head(ah, h, w)
+        x = self.segmentation_head(x)
+        x = F.interpolate(x, size=(h, w), mode='bilinear',
+                          align_corners=False)
 
-            return x, ah
-        else:
-            x = self.b4(self.pre_conv(res4))
-            x = self.p3(x, res3)
-            x = self.b3(x)
+        return x
 
-            x = self.p2(x, res2)
-            x = self.b2(x)
+    # def init_weight(self):
+    #     for m in self.children():
+    #         if isinstance(m, nn.Conv2d):
+    #             nn.init.kaiming_normal_(m.weight, a=1)
+    #             if m.bias is not None:
+    #                 nn.init.constant_(m.bias, 0)
 
-            x = self.p1(x, res1)
 
-            x = self.segmentation_head(x)
-            x = F.interpolate(x, size=(h, w), mode='bilinear',
-                              align_corners=False)
+@MODELS.register_module()
+class UnetformerHead(BaseDecodeHead):
+    def __init__(self, window_size=8, **kwargs):
+        super(UnetformerHead, self).__init__(
+            input_transform='multiple_select', **kwargs)
 
-            return x
+        encoder_channels = self.in_channels
+        decode_channels = self.channels
+        dropout = self.dropout_ratio
+        num_classes = self.num_classes
 
-    def init_weight(self):
-        for m in self.children():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, a=1)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
+        self.decoder = Decoder(
+            encoder_channels, decode_channels, dropout, window_size, num_classes)
+
+    def forward(self, x):
+        h, w = x[0].size()[-2:]
+
+        # Receive 4 stage backbone feature map: 1/4, 1/8, 1/16, 1/32
+        inputs = self._transform_inputs(x)
+
+        # print(inputs[0].shape, inputs[1].shape, inputs[2].shape, inputs[3].shape)
+
+        # res1, res2, res3, res4 = self.backbone(x)
+        x = self.decoder(inputs[0], inputs[1], inputs[2], inputs[3], h, w)
+        # x = self.cls_seg(x)
+        return x
