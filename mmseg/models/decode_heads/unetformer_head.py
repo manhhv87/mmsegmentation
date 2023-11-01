@@ -312,15 +312,8 @@ class WS(nn.Module):
 
 
 class FeatureRefinementHead(nn.Module):
-    def __init__(self, in_channels=64, decode_channels=64):
+    def __init__(self, decode_channels=64):
         super().__init__()
-        self.pre_conv = Conv(in_channels, decode_channels, kernel_size=1)
-
-        self.weights = nn.Parameter(torch.ones(
-            2, dtype=torch.float32), requires_grad=True)
-        self.eps = 1e-8
-        self.post_conv = ConvBNReLU(
-            decode_channels, decode_channels, kernel_size=3)
 
         # spatial path  utilizes a depth-wise convolution to produce a spatial-wise attentional map
         # S ∈ R (h×w×1), where h and w represent the spatial resolution of the feature map.
@@ -344,16 +337,7 @@ class FeatureRefinementHead(nn.Module):
             decode_channels, decode_channels, kernel_size=3)
         self.act = nn.ReLU6()
 
-    def forward(self, x, res):
-        x = F.interpolate(x, scale_factor=2, mode='bilinear',
-                          align_corners=False)
-        weights = nn.ReLU()(self.weights)
-        fuse_weights = weights / (torch.sum(weights, dim=0) + self.eps)
-
-        # we perform a weighted sum operation on the two features first to take
-        # full advantage of the precise semantic information and spatial details.
-        x = fuse_weights[0] * self.pre_conv(res) + fuse_weights[1] * x
-        x = self.post_conv(x)
+    def forward(self, x):
         shortcut = self.shortcut(x)
         pa = self.pa(x) * x
         ca = self.ca(x) * x
@@ -405,48 +389,44 @@ class Decoder(nn.Module):
             encoder_channels[-1], decode_channels, kernel_size=1)
 
         # GLTB, number of heads h are both set to 8
-        self.b4 = GLTB(dim=decode_channels, num_heads=8,
-                       window_size=window_size)
+        self.glbt3 = GLTB(dim=decode_channels, num_heads=8, window_size=window_size)
 
-        self.b3 = GLTB(dim=decode_channels, num_heads=8,
-                       window_size=window_size)
+        self.ws3 = WS(encoder_channels[-2], decode_channels)     # weight sum
 
-        self.p3 = WS(encoder_channels[-2], decode_channels)     # weight sum
+        self.glbt2 = GLTB(dim=decode_channels, num_heads=8, window_size=window_size)
 
-        self.b2 = GLTB(dim=decode_channels, num_heads=8,
-                       window_size=window_size)
+        self.ws2 = WS(encoder_channels[-3], decode_channels)
 
-        self.p2 = WS(encoder_channels[-3], decode_channels)
+        self.glbt1 = GLTB(dim=decode_channels, num_heads=8, window_size=window_size)
 
-        if self.training:
-            self.up4 = nn.UpsamplingBilinear2d(scale_factor=4)
-            self.up3 = nn.UpsamplingBilinear2d(scale_factor=2)
-            self.aux_head = AuxHead(decode_channels, num_classes)
+        self.ws1 = WS(encoder_channels[-4], decode_channels)
 
-        self.p1 = FeatureRefinementHead(encoder_channels[-4], decode_channels)
+        # if self.training:
+        #     self.up4 = nn.UpsamplingBilinear2d(scale_factor=4)
+        #     self.up3 = nn.UpsamplingBilinear2d(scale_factor=2)
+        #     self.aux_head = AuxHead(decode_channels, num_classes)
 
-        # self.segmentation_head = nn.Sequential(ConvBNReLU(decode_channels, decode_channels),
-        #                                        nn.Dropout2d(p=dropout, inplace=True),
-        #                                        Conv(decode_channels, num_classes, kernel_size=1))
+        self.frh = FeatureRefinementHead(decode_channels)
 
         self.segmentation_head = nn.Sequential(ConvBNReLU(decode_channels, decode_channels),
                                                nn.Dropout2d(p=dropout, inplace=True))
         self.init_weight()
 
     def forward(self, res1, res2, res3, res4, h, w):
-        x = self.b4(self.pre_conv(res4))
-        x = self.p3(x, res3)
-        x = self.b3(x)
+        x = self.glbt3(self.pre_conv(res4))
+        x = self.ws3(x, res3)
+        
+        x = self.glbt2(x)
+        x = self.ws2(x, res2)
 
-        x = self.p2(x, res2)
-        x = self.b2(x)
+        x = self.glbt1(x)
+        x = self.ws1(x, res1)
 
-        x = self.p1(x, res1)
-
+        x = self.frh(x)
         x = self.segmentation_head(x)
+
         x = F.interpolate(x, size=(h, w), mode='bilinear',
                           align_corners=False)
-
         return x
 
     def init_weight(self):

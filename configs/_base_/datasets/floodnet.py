@@ -1,9 +1,9 @@
 # dataset settings
 dataset_type = 'FloodNetDataset'
 data_root = './data/FloodNet'
-train_img_scale = (2056, 2124)
-val_img_scale = (1634, 1634)
-test_img_scale = (1634, 1634)
+train_img_scale = (1024, 1024)
+val_img_scale = (1024, 1024)
+test_img_scale = (1024, 1024)
 crop_size = (512, 512)
 
 train_pipeline = [
@@ -19,6 +19,7 @@ train_pipeline = [
     dict(type='PhotoMetricDistortion'),
     dict(type='PackSegInputs')
 ]
+
 val_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='Resize', scale=val_img_scale, keep_ratio=True),
@@ -27,6 +28,7 @@ val_pipeline = [
     dict(type='LoadAnnotations', reduce_zero_label=False),
     dict(type='PackSegInputs')
 ]
+
 test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='Resize', scale=test_img_scale, keep_ratio=True),
@@ -35,6 +37,7 @@ test_pipeline = [
     dict(type='LoadAnnotations', reduce_zero_label=False),
     dict(type='PackSegInputs')
 ]
+
 img_ratios = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]
 tta_pipeline = [
     dict(type='LoadImageFromFile', backend_args=dict(backend='local')),
@@ -51,6 +54,7 @@ tta_pipeline = [
             ], [dict(type='LoadAnnotations')], [dict(type='PackSegInputs')]
         ])
 ]
+
 train_dataloader = dict(
     batch_size=2,
     num_workers=2,
@@ -62,6 +66,7 @@ train_dataloader = dict(
         data_prefix=dict(
             img_path='images/training', seg_map_path='annotations/training'),
         pipeline=train_pipeline))
+
 val_dataloader = dict(
     batch_size=1,
     num_workers=2,
@@ -74,6 +79,7 @@ val_dataloader = dict(
             img_path='images/validation',
             seg_map_path='annotations/validation'),
         pipeline=val_pipeline))
+
 test_dataloader = dict(
     batch_size=1,
     num_workers=2,
