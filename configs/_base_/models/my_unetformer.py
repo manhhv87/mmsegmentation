@@ -35,8 +35,11 @@ model = dict(
         num_classes=10,
         norm_cfg=norm_cfg,
         align_corners=False,
-        loss_decode=dict(
-            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
+        # loss_decode=dict(
+        #     type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
+        loss_decode=[
+            dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.5),
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.5)]),
     
     # model training and testing settings
     train_cfg=dict(),
