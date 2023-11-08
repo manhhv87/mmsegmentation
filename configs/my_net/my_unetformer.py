@@ -21,8 +21,7 @@ optim_wrapper = dict(
     optimizer=optimizer,
     paramwise_cfg = dict(
         norm_decay_mult=0.0, 
-        bias_decay_mult=0.0),
-    clip_gard=dict(max_norm=1.0))
+        bias_decay_mult=0.0))
 
 param_scheduler = [
     # warmup
