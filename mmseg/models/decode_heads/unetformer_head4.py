@@ -486,8 +486,7 @@ class Decoder(nn.Module):
                  encoder_channels=(64, 128, 256, 512),
                  decode_channels=64,
                  dropout=0.1,
-                 window_size=8,
-                 num_classes=6):
+                 window_size=8):
         super(Decoder, self).__init__()
 
         # self.pre_conv = ConvBN(
@@ -511,11 +510,6 @@ class Decoder(nn.Module):
 
         self.ws1 = WS(encoder_channels[-4], decode_channels)
 
-        # if self.training:
-        #     self.up4 = nn.UpsamplingBilinear2d(scale_factor=4)
-        #     self.up3 = nn.UpsamplingBilinear2d(scale_factor=2)
-        #     self.aux_head = AuxHead(decode_channels, num_classes)
-
         self.frh = FeatureRefinementHead(decode_channels)
 
         self.segmentation_head = nn.Sequential(ConvBNReLU(decode_channels, decode_channels),
@@ -535,8 +529,7 @@ class Decoder(nn.Module):
         x = self.frh(x)
         x = self.segmentation_head(x)
 
-        x = F.interpolate(x, size=(h, w), mode='bilinear',
-                          align_corners=False)
+        x = F.interpolate(x, size=(h, w), mode='bilinear', align_corners=False)
         return x
 
     def init_weight(self):
