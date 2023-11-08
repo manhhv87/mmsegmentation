@@ -1,6 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+import numpy as np
 import torch
-import torch.nn as nn
+from torch import nn, einsum
 import torch.nn.functional as F
 from einops import rearrange, repeat
 
@@ -134,10 +135,12 @@ class GlobalLocalAttention(nn.Module):
 
         self.relative_pos_embedding = relative_pos_embedding
 
+        self.tau = nn.Parameter(torch.tensor(0.01), requires_grad=True)
+
         if self.relative_pos_embedding:
             # define a parameter table of relative position bias
             self.relative_position_bias_table = nn.Parameter(
-                torch.zeros((2 * window_size - 1) * (2 * window_size - 1), num_heads))  # 2*Wh-1 * 2*Ww-1, nH
+                torch.zeros((2 * window_size - 1) * (2 * window_size - 1), num_heads))  # # 2*Wh-1 * 2*Ww-1, nH
 
             # get pair-wise relative position index for each token inside the window
             coords_h = torch.arange(self.ws)
@@ -182,6 +185,7 @@ class GlobalLocalAttention(nn.Module):
         Args:
              x: input features with shape of (B, H, W, C)
         """
+        #  print('Input size', x.size())
         B, C, H, W = x.shape
 
         # local context
@@ -190,6 +194,8 @@ class GlobalLocalAttention(nn.Module):
         x = self.pad(x, self.ws)
         B, C, Hp, Wp = x.shape      # Hp, Wp = High/Width after padding
         qkv = self.qkv(x)           # con 1x1 -> (B x 3C x H x W)
+
+        # print('qkv size', qkv.size())
 
         # depth-to-space: reshape -> transpose -> reshape
         #
@@ -216,9 +222,24 @@ class GlobalLocalAttention(nn.Module):
                             h=self.num_heads, d=C//self.num_heads, hh=Hp//self.ws, ww=Wp//self.ws,
                             qkv=3, ws1=self.ws, ws2=self.ws)
 
-        dots = (q @ k.transpose(-2, -1)) * self.scale
+        # print('q size', q.size())
+        # print('k size', k.size())
+        # print('v size', v.size())
 
-        # https://www.youtube.com/watch?v=Ws2RAh_VDyU
+        # Ver. 1
+        # Dot Similarity
+        # dots = (q @ k.transpose(-2, -1)) * self.scale
+        # dots = einsum('ijkl, ijlm -> ijkm', q, k.transpose(-2, -1)) * self.scale
+
+        # Ver. 2
+        # Cosine Similarity
+        q = F.normalize(q, p=2, dim=-1)
+        k = F.normalize(k, p=2, dim=-1)
+        dots = einsum('ijkl, ijlm -> ijkm', q, k.transpose(-2, -1)) / self.tau
+
+        # print('k.transpose(-2, -1)', k.transpose(-2, -1).size())
+        # print('dots size', dots.size())
+
         if self.relative_pos_embedding:
             relative_position_bias = self.relative_position_bias_table[self.relative_position_index.view(-1)].view(
                 self.ws * self.ws, self.ws * self.ws, -1)  # wh*ww, wh*ww, number of heads
@@ -230,7 +251,14 @@ class GlobalLocalAttention(nn.Module):
 
         # Do softmax on the score of the attention mechanism
         attn = dots.softmax(dim=-1)
-        attn = attn @ v
+
+        # print('attn before', attn.size())   # [64, 8, 64, 64]
+        # print('v', v.size())                # [64, 8, 64, 8]
+
+        # attn = attn @ v
+        attn = einsum('ijkl, ijlm -> ijkm', attn, v)
+
+        # print('attn after', attn.size())    # [64, 8, 64, 8]
 
         # attn = rearrange(attn, '(b hh ww) h (ws1 ws2) d -> b (h d) (hh ws1) (ww ws2)',
         #                  h=self.num_heads, d=C//self.num_heads, hh=Hp//self.ws, ww=Wp//self.ws,
@@ -245,18 +273,24 @@ class GlobalLocalAttention(nn.Module):
                          h=self.num_heads, d=C//self.num_heads, hh=Hp//self.ws, ww=Wp//self.ws,
                          ws1=self.ws, ws2=self.ws)
 
+        # print('attn', attn.size())    # [16, 64, 16, 16]
+
         # cross-shaped window context interaction
         attn = attn[:, :, :H, :W]
+
+        # print('attn', attn.size())    # [16, 64, 16, 16]
 
         # attn_x: pad last dim by (0, 0) and 2nd to last by (0, 1)
         # attn_y: pad last dim by (0, 1) and 2nd to last by (0, 0)
         out = self.attn_x(F.pad(attn, pad=(0, 0, 0, 1), mode='reflect')) + self.attn_y(
             F.pad(attn, pad=(0, 1, 0, 0), mode='reflect'))   # global context
 
+        # print('out', out.size())  # 16, 64, 16, 16]
+
         out = out + local
         out = self.pad_out(out)
         out = self.proj(out)
-        # print(out.size())
+        # print(out.size()) # [16, 64, 16, 16]
         out = out[:, :, :H, :W]
 
         return out
@@ -377,68 +411,6 @@ class AuxHead(nn.Module):
         return feat
 
 
-class Decoder(nn.Module):
-    def __init__(self,
-                 encoder_channels=(64, 128, 256, 512),
-                 decode_channels=64,
-                 dropout=0.1,
-                 window_size=8,
-                 num_classes=6):
-        super(Decoder, self).__init__()
-
-        # self.pre_conv = ConvBN(
-        #     encoder_channels[-1], decode_channels, kernel_size=1)
-        self.pre_conv = Bottleneck(encoder_channels[-1], decode_channels)
-
-        # GLTB, number of heads h are both set to 8
-        self.glbt3 = GLTB(dim=decode_channels, num_heads=8, window_size=window_size)
-
-        self.ws3 = WS(encoder_channels[-2], decode_channels)     # weight sum
-
-        self.glbt2 = GLTB(dim=decode_channels, num_heads=8, window_size=window_size)
-
-        self.ws2 = WS(encoder_channels[-3], decode_channels)
-
-        self.glbt1 = GLTB(dim=decode_channels, num_heads=8, window_size=window_size)
-
-        self.ws1 = WS(encoder_channels[-4], decode_channels)
-
-        # if self.training:
-        #     self.up4 = nn.UpsamplingBilinear2d(scale_factor=4)
-        #     self.up3 = nn.UpsamplingBilinear2d(scale_factor=2)
-        #     self.aux_head = AuxHead(decode_channels, num_classes)
-
-        self.frh = FeatureRefinementHead(decode_channels)
-
-        self.segmentation_head = nn.Sequential(ConvBNReLU(decode_channels, decode_channels),
-                                               nn.Dropout2d(p=dropout, inplace=True))
-        self.init_weight()
-
-    def forward(self, res1, res2, res3, res4, h, w):
-        x = self.glbt3(self.pre_conv(res4))
-        x = self.ws3(x, res3)
-        
-        x = self.glbt2(x)
-        x = self.ws2(x, res2)
-
-        x = self.glbt1(x)
-        x = self.ws1(x, res1)
-
-        x = self.frh(x)
-        x = self.segmentation_head(x)
-
-        x = F.interpolate(x, size=(h, w), mode='bilinear',
-                          align_corners=False)
-        return x
-
-    def init_weight(self):
-        for m in self.children():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, a=1)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-
-
 class Bottleneck(nn.Module):
 
     def __init__(self, inplanes, planes, stride=1):
@@ -508,7 +480,73 @@ class Bottleneck(nn.Module):
 
         return out
 
-        
+
+class Decoder(nn.Module):
+    def __init__(self,
+                 encoder_channels=(64, 128, 256, 512),
+                 decode_channels=64,
+                 dropout=0.1,
+                 window_size=8,
+                 num_classes=6):
+        super(Decoder, self).__init__()
+
+        # self.pre_conv = ConvBN(
+        #     encoder_channels[-1], decode_channels, kernel_size=1)
+
+        self.pre_conv = Bottleneck(encoder_channels[-1], decode_channels)
+
+        # GLTB, number of heads h are both set to 8
+        self.glbt3 = GLTB(dim=decode_channels, num_heads=8,
+                          window_size=window_size)
+
+        self.ws3 = WS(encoder_channels[-2], decode_channels)     # weight sum
+
+        self.glbt2 = GLTB(dim=decode_channels, num_heads=8,
+                          window_size=window_size)
+
+        self.ws2 = WS(encoder_channels[-3], decode_channels)
+
+        self.glbt1 = GLTB(dim=decode_channels, num_heads=8,
+                          window_size=window_size)
+
+        self.ws1 = WS(encoder_channels[-4], decode_channels)
+
+        # if self.training:
+        #     self.up4 = nn.UpsamplingBilinear2d(scale_factor=4)
+        #     self.up3 = nn.UpsamplingBilinear2d(scale_factor=2)
+        #     self.aux_head = AuxHead(decode_channels, num_classes)
+
+        self.frh = FeatureRefinementHead(decode_channels)
+
+        self.segmentation_head = nn.Sequential(ConvBNReLU(decode_channels, decode_channels),
+                                               nn.Dropout2d(p=dropout, inplace=True))
+        self.init_weight()
+
+    def forward(self, res1, res2, res3, res4, h, w):
+        x = self.glbt3(self.pre_conv(res4))
+        x = self.ws3(x, res3)
+
+        x = self.glbt2(x)
+        x = self.ws2(x, res2)
+
+        x = self.glbt1(x)
+        x = self.ws1(x, res1)
+
+        x = self.frh(x)
+        x = self.segmentation_head(x)
+
+        x = F.interpolate(x, size=(h, w), mode='bilinear',
+                          align_corners=False)
+        return x
+
+    def init_weight(self):
+        for m in self.children():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, a=1)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
+
 @MODELS.register_module()
 class UnetformerHead(BaseDecodeHead):
     def __init__(self, window_size=8, **kwargs):
@@ -519,7 +557,7 @@ class UnetformerHead(BaseDecodeHead):
         decode_channels = self.channels
         dropout = self.dropout_ratio
         num_classes = self.num_classes
-        
+
         self.decoder = Decoder(
             encoder_channels, decode_channels, dropout, window_size, num_classes)
 
