@@ -97,74 +97,76 @@ class Mlp(nn.Module):
         return x
 
 
-# Global-local attention
-class GlobalLocalAttention(nn.Module):
-    def __init__(self,
-                 dim=256,                       # Number of input channels
-                 num_heads=16,                  # Number of attention heads h
-                 # If True, add a learnable bias to query, key, value. Default: False
-                 qkv_bias=False,
-                 window_size=8,                 # The height and width of the window w
-                 relative_pos_embedding=True
-                 ):
+class CyclicShift(nn.Module):
+    def __init__(self, displacement):
         super().__init__()
+        self.displacement = displacement
+
+    def forward(self, x):
+        return torch.roll(x, shifts=(self.displacement, self.displacement), dims=(1, 2))
+
+
+def create_mask(window_size, displacement, upper_lower, left_right):
+    mask = torch.zeros(window_size ** 2, window_size ** 2)
+
+    if upper_lower:
+        mask[-displacement * window_size:, :-
+             displacement * window_size] = float('-inf')
+        mask[:-displacement * window_size, -
+             displacement * window_size:] = float('-inf')
+
+    if left_right:
+        mask = rearrange(mask, '(h1 w1) (h2 w2) -> h1 w1 h2 w2',
+                         h1=window_size, h2=window_size)
+        mask[:, -displacement:, :, :-displacement] = float('-inf')
+        mask[:, :-displacement, :, -displacement:] = float('-inf')
+        mask = rearrange(mask, 'h1 w1 h2 w2 -> (h1 w1) (h2 w2)')
+
+    return mask
+
+
+def get_relative_distances(window_size):
+    indices = torch.tensor(
+        np.array([[x, y] for x in range(window_size) for y in range(window_size)]))
+    distances = indices[None, :, :] - indices[:, None, :]
+    return distances
+
+
+class GlobalLocalAttention(nn.Module):
+    def __init__(self, dim=256, num_heads=16, shifted=True, qkv_bias=False, window_size=8, relative_pos_embedding=True):
+        super().__init__()
+
         self.num_heads = num_heads
-        # Number of input channels of each attention heads
         head_dim = dim // self.num_heads
         self.scale = head_dim ** -0.5
-        self.ws = window_size   # Wh, Ww
-
-        # local branch employs two parallel convolutional layers with
-        # kernel sizes of 3 × 3 and 1 × 1 to extract the local context
-        # self.local1 = ConvBN(dim, dim, kernel_size=3)
-        # self.local2 = ConvBN(dim, dim, kernel_size=1)
-        self.local = Bottleneck(dim, dim)
-
-        # global branch deploys the window-based multi-head selfattention to capture global context.
-        # we first use a standard 1 × 1 convolution to expand the channel dimension
-        # of the input 2D feature map ∈ R (B×C×H×W) to 3 times.
-        self.qkv = Conv(dim, 3*dim, kernel_size=1, bias=qkv_bias)
-
-        self.proj = SeparableConvBN(dim, dim, kernel_size=window_size)
-
-        # cross-shaped window context interaction
-        self.attn_x = nn.AvgPool2d(kernel_size=(window_size, 1), stride=1,
-                                   padding=(window_size//2 - 1, 0))
-
-        self.attn_y = nn.AvgPool2d(kernel_size=(1, window_size), stride=1,
-                                   padding=(0, window_size//2 - 1))
+        self.ws = window_size
 
         self.relative_pos_embedding = relative_pos_embedding
+        self.shifted = shifted
 
-        self.tau = nn.Parameter(torch.tensor(0.01), requires_grad=True)
+        self.local = Bottleneck(dim, dim)
+        self.proj = SeparableConvBN(dim, dim, kernel_size=window_size)
+
+        if self.shifted:
+            displacement = window_size // 2
+            self.cyclic_shift = CyclicShift(-displacement)
+            self.cyclic_back_shift = CyclicShift(displacement)
+            self.upper_lower_mask = nn.Parameter(create_mask(window_size=window_size, displacement=displacement,
+                                                             upper_lower=True, left_right=False), requires_grad=False)
+            self.left_right_mask = nn.Parameter(create_mask(window_size=window_size, displacement=displacement,
+                                                            upper_lower=False, left_right=True), requires_grad=False)
+
+        self.to_qkv = Conv(dim, 3*dim, kernel_size=1, bias=qkv_bias)
 
         if self.relative_pos_embedding:
-            # define a parameter table of relative position bias
-            self.relative_position_bias_table = nn.Parameter(
-                torch.zeros((2 * window_size - 1) * (2 * window_size - 1), num_heads))  # # 2*Wh-1 * 2*Ww-1, nH
+            self.relative_indices = get_relative_distances(
+                window_size) + window_size - 1
+            self.pos_embedding = nn.Parameter(torch.randn(
+                2 * window_size - 1, 2 * window_size - 1))
+        else:
+            self.pos_embedding = nn.Parameter(
+                torch.randn(window_size ** 2, window_size ** 2))
 
-            # get pair-wise relative position index for each token inside the window
-            coords_h = torch.arange(self.ws)
-            coords_w = torch.arange(self.ws)
-            coords = torch.stack(torch.meshgrid(
-                [coords_h, coords_w]))   # 2, Wh, Ww
-            coords_flatten = torch.flatten(coords, 1)  # 2, Wh*Ww
-
-            # 2, Wh*Ww, Wh*Ww
-            relative_coords = coords_flatten[:, :,
-                                             None] - coords_flatten[:, None, :]
-            relative_coords = relative_coords.permute(
-                1, 2, 0).contiguous()  # Wh*Ww, Wh*Ww, 2
-            relative_coords[:, :, 0] += self.ws - 1  # shift to start from 0
-            relative_coords[:, :, 1] += self.ws - 1
-            relative_coords[:, :, 0] *= 2 * self.ws - 1
-            relative_position_index = relative_coords.sum(-1)  # Wh*Ww, Wh*Ww
-            self.register_buffer("relative_position_index",
-                                 relative_position_index)
-
-            trunc_normal_(self.relative_position_bias_table, std=.02)
-
-    # ps - padding size
     def pad(self, x, ps):
         _, _, H, W = x.size()   # B, C, H, W
 
@@ -182,131 +184,57 @@ class GlobalLocalAttention(nn.Module):
         return x
 
     def forward(self, x):
-        """
-        Args:
-             x: input features with shape of (B, H, W, C)
-        """
-        #  print('Input size', x.size())
-        B, C, H, W = x.shape
+        if self.shifted:
+            x = self.cyclic_shift(x)
 
         # local context
-        # local = self.local2(x) + self.local1(x)
         local = self.local(x)
 
         x = self.pad(x, self.ws)
-        B, C, Hp, Wp, = x.shape      # Hp, Wp = High/Width after padding
-        qkv = self.qkv(x)           # con 1x1 -> (B x 3C x H x W)
+        B, C, Hp, Wp = x.shape      # Hp, Wp = High/Width after padding
+        qkv = self.to_qkv(x)        # con 1x1 -> (B x 3C x H x W)
 
-        # print('qkv size', qkv.size())
+        nw_h = Hp // self.ws
+        nw_w = Wp // self.ws
 
-        # depth-to-space: reshape -> transpose -> reshape
-        #
-        # q, k, v = rearrange(qkv, 'b (qkv h d) (ws1 hh) (ws2 ww) -> qkv (b hh ww) h (ws1 ws2) d',
-        #                     h=self.num_heads, qkv=3, ws1=self.ws, ws2=self.ws)
-        #
-        #                                    0  1  2  3   4   5    6   7
-        #   reshape:       qkv = qkv.reshape(b, 3, h, d, ws1, hh, ws2, ww)
-        #   transpose：    qkv = qkv.transpose(1, 0, 5, 7, 2, 4, 6, 3) = (3, b, hh, ww, h, ws1, ws2, d)
-        #   reshape:   q, k, v = qkv.reshape(3, b*hh*ww, h, ws1*ws2, d)
-        #
-        # q, k, v = rearrange(qkv, 'b (qkv h d) (hh ws1) (ww ws2) -> qkv (b hh ww) h (ws1 ws2) d',
-        #                     h=self.num_heads, qkv=3, ws1=self.ws, ws2=self.ws)
-        #
-        #                                    0  1  2  3   4   5   6    7
-        #   reshape:       qkv = qkv.reshape(b, 3, h, d, hh, ws1, ww, ws2)
-        #                        --> window partition --> (B x H/w x W/w) x 3C x w x w
-        #   transpose：    qkv = qkv.transpose(1, 0, 4, 6, 2, 5, 7, 3) = (3, b, hh, ww, h, ws1, ws2, d)
-        #                        --> reshape each head --> 1D sequence --> (3 x B x H/w x W/w x h) x (w x w) x C/h
-        #   reshape:   q, k, v = qkv.reshape(3, b*hh*ww, h, ws1*ws2, d)
-        #                        --> assign to each head --> (B x H/w x W/w) x (w x w) x C/h
-        #
+        dots = einsum('ijkl, ijlm -> ijkm', q, k.transpose(-2, -1)) * self.scale
+
         q, k, v = rearrange(qkv, 'b (qkv h d) (hh ws1) (ww ws2) -> qkv (b hh ww) h (ws1 ws2) d',
-                            h=self.num_heads, d=C//self.num_heads, hh=Hp//self.ws, ww=Wp//self.ws,
+                            h=self.num_heads, d=C//self.num_heads, hh=nw_h, ww=nw_w,
                             qkv=3, ws1=self.ws, ws2=self.ws)
 
-        # print('q size', q.size())
-        # print('k size', k.size())
-        # print('v size', v.size())
-
-        # Ver. 1
-        # Dot Similarity
-        # dots = (q @ k.transpose(-2, -1)) * self.scale
-        # dots = einsum('ijkl, ijlm -> ijkm', q, k.transpose(-2, -1)) * self.scale
-
-        # Ver. 2
-        # Cosine Similarity
-        q = F.normalize(q, p=2, dim=-1)
-        k = F.normalize(k, p=2, dim=-1)
-        dots = einsum('ijkl, ijlm -> ijkm', q, k.transpose(-2, -1)) / self.tau
-        # https://rockt.github.io/2018/04/30/einsum
-
-        # print('k.transpose(-2, -1)', k.transpose(-2, -1).size())
-        # print('dots size', dots.size())
-
         if self.relative_pos_embedding:
-            relative_position_bias = self.relative_position_bias_table[self.relative_position_index.view(-1)].view(
-                self.ws * self.ws, self.ws * self.ws, -1)  # wh*ww, wh*ww, number of heads
-            relative_position_bias = relative_position_bias.permute(
-                2, 0, 1).contiguous()  # number of heads, wh*ww, wh*ww
+            dots += self.pos_embedding[self.relative_indices[:, :, 0], self.relative_indices[:, :, 1]]
+        else:
+            dots += self.pos_embedding
 
-            # Calculate the position code and add it together with the attention
-            dots += relative_position_bias.unsqueeze(0)
+        if self.shifted:
+            dots[:, :, -nw_w:] += self.upper_lower_mask
+            dots[:, :, nw_w - 1::nw_w] += self.left_right_mask
 
-        # Do softmax on the score of the attention mechanism
         attn = dots.softmax(dim=-1)
 
-        # print('attn before', attn.size())   # [64, 8, 64, 64]
-        # print('v', v.size())                # [64, 8, 64, 8]
-
-        # attn = attn @ v
-        attn = einsum('ijkl, ijlm -> ijkm', attn, v)
-
-        # print('attn after', attn.size())    # [64, 8, 64, 8]
-
-        # attn = rearrange(attn, '(b hh ww) h (ws1 ws2) d -> b (h d) (hh ws1) (ww ws2)',
-        #                  h=self.num_heads, d=C//self.num_heads, hh=Hp//self.ws, ww=Wp//self.ws,
-        #                  ws1=self.ws, ws2=self.ws)
-        #
-        #                                  0  1   2   3   4    5   6
-        #   reshape:   attn = attn.reshape(b, hh, ww, h, ws1, ws2, d)
-        #   transpose：attn = attn.transpose(0, 3, 6, 1, 4, 2, 5) = (b, h, d, hh, ws1, ww, ws2)
-        #   reshape:   attn = qkv.reshape(b, (h*d), (hh*ws1), (ws*ws2))
-        #
-        attn = rearrange(attn, '(b hh ww) h (ws1 ws2) d -> b (h d) (hh ws1) (ww ws2)',
-                         h=self.num_heads, d=C//self.num_heads, hh=Hp//self.ws, ww=Wp//self.ws,
-                         ws1=self.ws, ws2=self.ws)
-
-        # print('attn', attn.size())    # [16, 64, 16, 16]
-
-        # cross-shaped window context interaction
-        attn = attn[:, :, :H, :W]
-
-        # print('attn', attn.size())    # [16, 64, 16, 16]
-
-        # attn_x: pad last dim by (0, 0) and 2nd to last by (0, 1)
-        # attn_y: pad last dim by (0, 1) and 2nd to last by (0, 0)
-        out = self.attn_x(F.pad(attn, pad=(0, 0, 0, 1), mode='reflect')) + self.attn_y(
-            F.pad(attn, pad=(0, 1, 0, 0), mode='reflect'))   # global context
-
-        # print('out', out.size())  # 16, 64, 16, 16]
+        out = einsum('b h w i j, b h w j d -> b h w i d', attn, v)
+        out = rearrange(out, 'b h (nw_h nw_w) (w_h w_w) d -> b (nw_h w_h) (nw_w w_w) (h d)',
+                        h=self.num_heads, w_h=self.ws, w_w=self.ws, nw_h=nw_h, nw_w=nw_w)
 
         out = out + local
         out = self.pad_out(out)
         out = self.proj(out)
-        # print(out.size()) # [16, 64, 16, 16]
-        out = out[:, :, :H, :W]
+
+        if self.shifted:
+            out = self.cyclic_back_shift(out)
 
         return out
 
 
 # Global-local transformer block (GLTB - ref. Fig. 2)
 class GLTB(nn.Module):
-    def __init__(self, dim=256, num_heads=16,  mlp_ratio=4., qkv_bias=False, drop=0., attn_drop=0.,
-                 drop_path=0., act_layer=nn.ReLU6, norm_layer=nn.BatchNorm2d, window_size=8):
+    def __init__(self, dim=256, num_heads=16,  mlp_ratio=4., drop=0., drop_path=0., act_layer=nn.ReLU6, norm_layer=nn.BatchNorm2d, window_size=8):
         super().__init__()
         self.norm1 = norm_layer(dim)
         self.attn = GlobalLocalAttention(
-            dim, num_heads=num_heads, qkv_bias=qkv_bias, window_size=window_size)
+            dim, num_heads=num_heads, window_size=window_size)
 
         self.drop_path = DropPath(
             drop_path) if drop_path > 0. else nn.Identity()

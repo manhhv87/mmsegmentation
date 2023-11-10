@@ -12,7 +12,6 @@ data_preprocessor = dict(
 model = dict(
     type='EncoderDecoder',
     data_preprocessor=data_preprocessor,
-    pretrained='open-mmlab://resnet50_v1c',
 
     backbone=dict(
         type='ResNetV1c',
@@ -24,7 +23,11 @@ model = dict(
         norm_cfg=norm_cfg,
         norm_eval=False,
         style='pytorch',
-        contract_dilation=True),
+        contract_dilation=True,
+        init_cfg=dict(
+          type='Pretrained', 
+          checkpoint='open-mmlab://resnet50_v1c')
+        ),
 
     decode_head=dict(
         type='UnetformerHead',
@@ -37,9 +40,8 @@ model = dict(
         align_corners=False,
         # loss_decode=dict(
         #     type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
-        loss_decode=[
-            dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.5),
-            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.5)]),
+        loss_decode=[dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
+                dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]),
     
     # model training and testing settings
     train_cfg=dict(),
