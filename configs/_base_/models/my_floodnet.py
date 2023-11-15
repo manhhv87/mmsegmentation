@@ -25,12 +25,12 @@ model = dict(
         style='pytorch',
         contract_dilation=True,
         init_cfg=dict(
-          type='Pretrained', 
-          checkpoint='open-mmlab://resnet50_v1c')
-        ),
+            type='Pretrained',
+            checkpoint='open-mmlab://resnet50_v1c')
+    ),
 
     decode_head=dict(
-        type='UnetformerHead',
+        type='UnetfloodnetHead',
         in_channels=[256, 512, 1024, 2048],
         in_index=[0, 1, 2, 3],
         channels=64,
@@ -41,7 +41,8 @@ model = dict(
         # loss_decode=dict(
         #     type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
         loss_decode=[
-            dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
+            dict(type='CrossEntropyLoss', loss_name='loss_ce',
+                 use_sigmoid=False, loss_weight=0.3),
             dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]),
 
     # model training and testing settings
