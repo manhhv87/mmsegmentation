@@ -12,7 +12,6 @@ model = dict(
     data_preprocessor=data_preprocessor,
     decode_head=dict(num_classes=10))
 
-
 optim_wrapper = dict(
     _delete_=True,
     type='OptimWrapper',
@@ -27,13 +26,13 @@ optim_wrapper = dict(
 
 param_scheduler = [
     dict(
-        type='LinearLR', start_factor=1e-6, by_epoch=False, begin=0, end=1500),
+        type='LinearLR', start_factor=1e-6, by_epoch=False, begin=0, end=8000),
     dict(
         type='PolyLR',
         eta_min=0.0,
         power=1.0,
-        begin=1500,
-        end=160000,
+        begin=8000,
+        end=80000,
         by_epoch=False,
     )
 ]
