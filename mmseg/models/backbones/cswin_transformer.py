@@ -417,6 +417,9 @@ class CSWin(BaseModule):
         return x
 
     def forward_features(self, x):
+        x = torch.stack(x, dim=0)
+        x = x.type(torch.float)
+
         B = x.shape[0]
         x = self.stage1_conv_embed[0](x)  # B, C, H, W
         B, C, H, W = x.size()
