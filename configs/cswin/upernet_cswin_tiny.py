@@ -25,7 +25,7 @@ model = dict(
         in_channels=[64, 128, 256, 512],
         num_classes=10
     ),
-    
+
     auxiliary_head=dict(
         in_channels=256,
         num_classes=10

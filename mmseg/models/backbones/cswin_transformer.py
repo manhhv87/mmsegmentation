@@ -416,10 +416,7 @@ class CSWin(BaseModule):
         x = x.view(B, H, W, C).permute(0, 3, 1, 2).contiguous()
         return x
 
-    def forward_features(self, x):
-        x = torch.stack(x, dim=0)
-        x = x.type(torch.float)
-
+    def forward_features(self, x):       
         B = x.shape[0]
         x = self.stage1_conv_embed[0](x)  # B, C, H, W
         B, C, H, W = x.size()
