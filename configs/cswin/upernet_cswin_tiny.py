@@ -1,10 +1,16 @@
 _base_ = [
-    '../_base_/models/upernet_cswin.py', 
-    '../_base_/datasets/ade20k.py',
-    '../_base_/default_runtime.py', 
-    '../_base_/schedules/schedule_160k.py'
+    '../_base_/models/upernet_cswin.py',
+    '../_base_/datasets/floodnet.py',
+    '../_base_/default_runtime.py',
+    '../_base_/schedules/schedule_80k.py'
 ]
+
+crop_size = (512, 512)
+data_preprocessor = dict(size=crop_size)
+
 model = dict(
+    data_preprocessor=data_preprocessor,
+
     backbone=dict(
         type='CSWin',
         embed_dim=64,
@@ -17,12 +23,12 @@ model = dict(
 
     decode_head=dict(
         in_channels=[64, 128, 256, 512],
-        num_classes=150
+        num_classes=10
     ),
     
     auxiliary_head=dict(
         in_channels=256,
-        num_classes=150
+        num_classes=10
     ))
 
 # AdamW optimizer, no weight decay for position embedding & layer norm in backbone

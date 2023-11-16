@@ -1,10 +1,16 @@
 _base_ = [
     '../_base_/models/upernet_cswin.py',
-    '../_base_/datasets/ade20k.py',
+    '../_base_/datasets/floodnet.py',
     '../_base_/default_runtime.py',
-    '../_base_/schedules/schedule_160k.py'
+    '../_base_/schedules/schedule_80k.py'
 ]
+
+crop_size = (512, 512)
+data_preprocessor = dict(size=crop_size)
+
 model = dict(
+    data_preprocessor=data_preprocessor,
+
     backbone=dict(
         type='CSWin',
         embed_dim=96,
@@ -17,24 +23,37 @@ model = dict(
 
     decode_head=dict(
         in_channels=[96, 192, 384, 768],
-        num_classes=150
+        num_classes=10
     ),
-    
+
     auxiliary_head=dict(
         in_channels=384,
-        num_classes=150
+        num_classes=10
     ))
 
 # AdamW optimizer, no weight decay for position embedding & layer norm in backbone
-optimizer = dict(_delete_=True, type='AdamW', lr=0.00006, betas=(0.9, 0.999), weight_decay=0.01,
-                 paramwise_cfg=dict(custom_keys={'absolute_pos_embed': dict(decay_mult=0.),
-                                                 'relative_position_bias_table': dict(decay_mult=0.),
-                                                 'norm': dict(decay_mult=0.)}))
+optim_wrapper = dict(
+    _delete_=True,
+    type='OptimWrapper',
+    optimizer=dict(
+        type='AdamW', lr=0.00006, betas=(0.9, 0.999), weight_decay=0.01),
+    paramwise_cfg=dict(custom_keys={'absolute_pos_embed': dict(decay_mult=0.),
+                                    'relative_position_bias_table': dict(decay_mult=0.),
+                                    'norm': dict(decay_mult=0.)}))
 
-lr_config = dict(_delete_=True, policy='poly',
-                 warmup='linear',
-                 warmup_iters=1500,
-                 warmup_ratio=1e-6,
-                 power=1.0, min_lr=0.0, by_epoch=False)
+param_scheduler = [
+    dict(
+        type='LinearLR', start_factor=1e-6, by_epoch=False, begin=0, end=8000),
+    dict(
+        type='PolyLR',
+        eta_min=0.0,
+        power=1.0,
+        begin=8000,
+        end=80000,
+        by_epoch=False,
+    )
+]
 
-data = dict(samples_per_gpu=2)
+train_dataloader = dict(batch_size=8, num_workers=2)
+val_dataloader = dict(batch_size=8, num_workers=2)
+test_dataloader = val_dataloader
