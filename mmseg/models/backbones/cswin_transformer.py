@@ -10,8 +10,8 @@ from timm.models.layers import DropPath, trunc_normal_
 from einops.layers.torch import Rearrange
 from mmengine.runner import CheckpointLoader
 from mmengine.logging import print_log
-from mmengine.model import BaseModule
 
+from mmengine.model import BaseModule
 from mmseg.registry import MODELS
 
 
@@ -289,9 +289,7 @@ class CSWin(BaseModule):
                  use_chk=False,
                  pretrained=None,
                  init_cfg=None):
-        super().__init__(init_cfg)
-
-        self.pretrained = pretrained
+        super().__init__(init_cfg)        
 
         assert not (init_cfg and pretrained), \
             'init_cfg and pretrained cannot be setting at the same time'
@@ -304,6 +302,8 @@ class CSWin(BaseModule):
             init_cfg = init_cfg
         else:
             raise TypeError('pretrained must be a str or None')
+
+        self.pretrained = pretrained
 
         # num_features for consistency with other models
         self.num_features = self.embed_dim = embed_dim
