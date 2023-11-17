@@ -1,5 +1,5 @@
 _base_ = [
-    '../_base_/models/upernet_cswin.py',
+    '../_base_/models/upernet_swinunet.py',
     '../_base_/datasets/floodnet.py',
     '../_base_/default_runtime.py',
     '../_base_/schedules/schedule_80k.py'
@@ -12,32 +12,29 @@ model = dict(
     data_preprocessor=data_preprocessor,
 
     backbone=dict(
-        type='CSWin',
-        embed_dim=96,
-        depth=[2, 4, 32, 2],
-        num_heads=[4, 8, 16, 32],
-        split_size=[1, 2, 7, 7],
-        drop_path_rate=0.6,
-        use_chk=False),
+        type='SwinUnet',
+        num_heads=8,
+        win_size=4,        
+        bottleneck=1024,
+        encoder=[256, 512],        
+        decoder=[1024, 512]),
 
     decode_head=dict(
         in_channels=[96, 192, 384, 768],
-        num_classes=10),
+        num_classes=10
+    ),
 
-    # auxiliary_head=dict(
-    #     in_channels=384,
-    #     num_classes=10)
-    # )
+    auxiliary_head=dict(
+        in_channels=384,
+        num_classes=10
+    ))
 
 # AdamW optimizer, no weight decay for position embedding & layer norm in backbone
 optim_wrapper = dict(
     _delete_=True,
     type='OptimWrapper',
     optimizer=dict(
-        type='AdamW', lr=0.00006, betas=(0.9, 0.999), weight_decay=0.01),
-    paramwise_cfg=dict(custom_keys={'absolute_pos_embed': dict(decay_mult=0.),
-                                    'relative_position_bias_table': dict(decay_mult=0.),
-                                    'norm': dict(decay_mult=0.)}))
+        type='AdamW', lr=0.00006, betas=(0.9, 0.999), weight_decay=0.01))
 
 param_scheduler = [
     dict(

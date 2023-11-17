@@ -15,7 +15,7 @@ model = dict(
     pretrained=None,
 
     backbone=dict(
-        type='CSWin',
+        type='SwinUnet',
         embed_dim=64,
         patch_size=4,
         depth=[1, 2, 21, 1],

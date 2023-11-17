@@ -286,7 +286,7 @@ class CSWin(BaseModule):
                  attn_drop_rate=0.,
                  drop_path_rate=0.,
                  norm_layer=nn.LayerNorm,
-                 use_chk=False,
+                 use_checkpoint=False,
                  pretrained=None,
                  init_cfg=None):
         super().__init__(init_cfg)        
@@ -309,7 +309,7 @@ class CSWin(BaseModule):
         self.num_features = self.embed_dim = embed_dim
 
         heads = num_heads
-        self.use_chk = use_chk
+        self.use_checkpoint = use_checkpoint
         self.stage1_conv_embed = nn.Sequential(
             nn.Conv2d(in_channels, embed_dim, 7, 4, 2),
             Rearrange('b c h w -> b (h w) c', h=pretrain_img_size //
@@ -427,7 +427,7 @@ class CSWin(BaseModule):
         for blk in self.stage1:
             blk.H = H
             blk.W = W
-            if self.use_chk:
+            if self.use_checkpoint:
                 x = cp.checkpoint(blk, x)
             else:
                 x = blk(x)
@@ -442,7 +442,7 @@ class CSWin(BaseModule):
             for blk in blocks:
                 blk.H = H
                 blk.W = W
-                if self.use_chk:
+                if self.use_checkpoint:
                     x = cp.checkpoint(blk, x)
                 else:
                     x = blk(x)
