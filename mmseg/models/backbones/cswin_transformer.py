@@ -156,7 +156,7 @@ class CSWinBlock(nn.Module):
                  split_size=7, mlp_ratio=4., qkv_bias=False, qk_scale=None,
                  drop=0., attn_drop=0., drop_path=0.,
                  act_layer=nn.GELU, norm_layer=nn.LayerNorm,
-                 last_stage=False):
+                 last_stage=False, ):
         super().__init__()
         self.dim = dim
         self.num_heads = num_heads

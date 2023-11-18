@@ -12,6 +12,7 @@ data_preprocessor = dict(
 model = dict(
     type='EncoderDecoder',
     data_preprocessor=data_preprocessor,
+    pretrained=None,
 
     backbone=dict(
         type='CSWin',
@@ -25,10 +26,7 @@ model = dict(
         qk_scale=None,
         drop_rate=0.,
         attn_drop_rate=0.,
-        drop_path_rate=0.1,
-        init_cfg=dict(
-          type='Pretrained', 
-          checkpoint='https://objects.githubusercontent.com/github-production-release-asset-2e65be/382210636/c1c00b47-20af-4b20-9d23-ae74f0f61aab?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20231117%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20231117T153058Z&X-Amz-Expires=300&X-Amz-Signature=a32a018c6933871e02aabfcf74d8b45389e4f7d23fab0877b66f9e04b01553af&X-Amz-SignedHeaders=host&actor_id=67886698&key_id=0&repo_id=382210636&response-content-disposition=attachment%3B%20filename%3Dcswin_tiny_224.pth&response-content-type=application%2Foctet-stream')),
+        drop_path_rate=0.1),        
 
     decode_head=dict(
         type='UPerHead',
