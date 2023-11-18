@@ -18,7 +18,7 @@ model = dict(
         num_heads=[2,4,8,16],
         split_size=[1,2,7,7],
         drop_path_rate=0.3,
-        use_chk=False),
+        use_checkpoint=False),
 
     decode_head=dict(
         in_channels=[64,128,256,512],
