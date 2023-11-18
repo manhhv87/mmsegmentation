@@ -7,9 +7,11 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
+checkpoint='https://objects.githubusercontent.com/github-production-release-asset-2e65be/382210636/87c0205e-d6c5-4055-9ce1-adb096034161?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20231117%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20231117T082017Z&X-Amz-Expires=300&X-Amz-Signature=b40a5bdf71fbca20a11ed7a26a3f71d4777e4a75d6faa7c460122ea2ea1a8d1d&X-Amz-SignedHeaders=host&actor_id=67886698&key_id=0&repo_id=382210636&response-content-disposition=attachment%3B%20filename%3Dcswin_base_224.pth&response-content-type=application%2Foctet-stream')
 
 model = dict(
     data_preprocessor=data_preprocessor,
+    pretrained=checkpoint,
 
     backbone=dict(
         type='SwinUnet',
@@ -20,9 +22,11 @@ model = dict(
         decoder=[1024, 512]),
 
     decode_head=dict(
-        in_channels=[96, 192, 384, 768],
-        num_classes=10
-    ),
+        type='UPerHead',
+        num_classes=10,
+        loss_decode=[
+            dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]),
 
     auxiliary_head=dict(
         in_channels=384,

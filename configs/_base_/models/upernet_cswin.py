@@ -38,27 +38,22 @@ model = dict(
         num_classes=19,
         norm_cfg=norm_cfg,
         align_corners=False,
-        # loss_decode=dict(
-        #     type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
-        loss_decode=[
-            dict(type='CrossEntropyLoss', loss_name='loss_ce',
-                 use_sigmoid=False, loss_weight=0.3),
-            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]),
+        loss_decode=dict(
+            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
 
-
-    # auxiliary_head=dict(
-    #     type='FCNHead',
-    #     in_channels=384,
-    #     in_index=2,
-    #     channels=256,
-    #     num_convs=1,
-    #     concat_input=False,
-    #     dropout_ratio=0.1,
-    #     num_classes=19,
-    #     norm_cfg=norm_cfg,
-    #     align_corners=False,
-    #     loss_decode=dict(
-    #         type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.4)),
+    auxiliary_head=dict(
+        type='FCNHead',
+        in_channels=384,
+        in_index=2,
+        channels=256,
+        num_convs=1,
+        concat_input=False,
+        dropout_ratio=0.1,
+        num_classes=19,
+        norm_cfg=norm_cfg,
+        align_corners=False,
+        loss_decode=dict(
+            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.4)),
 
     # model training and testing settings
     train_cfg=dict(),

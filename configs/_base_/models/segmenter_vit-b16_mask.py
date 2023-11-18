@@ -1,12 +1,10 @@
-checkpoint = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/segmenter/vit_base_p16_384_20220308-96dfe169.pth'  # noqa
-
 # model settings
 backbone_norm_cfg = dict(type='LN', eps=1e-6, requires_grad=True)
 
 data_preprocessor = dict(
     type='SegDataPreProcessor',
-    mean=[0.485, 0.456, 0.406],
-    std=[0.229, 0.224, 0.225],
+    mean=[123.675, 116.28, 103.53],
+    std=[58.395, 57.12, 57.375],
     bgr_to_rgb=True,
     pad_val=0,
     seg_pad_val=255)
@@ -14,7 +12,7 @@ data_preprocessor = dict(
 model = dict(
     type='EncoderDecoder',
     data_preprocessor=data_preprocessor,
-    pretrained=checkpoint,
+    pretrained=None,
 
     backbone=dict(
         type='VisionTransformer',

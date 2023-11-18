@@ -5,13 +5,13 @@ _base_ = [
     '../_base_/schedules/schedule_80k.py'
 ]
 
-# checkpoint='https://drive.google.com/open?id=1frQAK05UtiAO8rvKG9y5GXABaH70_-Hu&authuser=0'
-
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
+checkpoint='https://drive.google.com/open?id=1frQAK05UtiAO8rvKG9y5GXABaH70_-Hu&authuser=0'
 
 model = dict(
     data_preprocessor=data_preprocessor,
+    pretrained=checkpoint,
 
     backbone=dict(
         type='MTUNet',
@@ -19,18 +19,18 @@ model = dict(
         win_size=4,        
         bottleneck=1024,
         encoder=[256, 512],        
-        decoder=[1024, 512],
-        # init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
-    ),
+        decoder=[1024, 512]),
 
     decode_head=dict(
         in_channels=[96, 192, 384, 768],
-        num_classes=10
-    ),
+        num_classes=10,
+        loss_decode=[
+            dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]),
 
-    # auxiliary_head=dict(
-    #     in_channels=384,
-    #     num_classes=10)
+    auxiliary_head=dict(
+        in_channels=384,
+        num_classes=10)
     )
 
 # AdamW optimizer, no weight decay for position embedding & layer norm in backbone
