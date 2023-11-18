@@ -27,6 +27,7 @@ from .vpd import VPD
 from .cswin_transformer import CSWin
 from .mtunet import MTUNet
 from .swinunet import SwinUnet
+from .smaatunet import SmaAt_UNet
 
 __all__ = [
     'ResNet', 'ResNetV1c', 'ResNetV1d', 'ResNeXt', 'HRNet', 'FastSCNN',
@@ -34,5 +35,5 @@ __all__ = [
     'VisionTransformer', 'SwinTransformer', 'MixVisionTransformer',
     'BiSeNetV1', 'BiSeNetV2', 'ICNet', 'TIMMBackbone', 'ERFNet', 'PCPVT',
     'SVT', 'STDCNet', 'STDCContextPathNet', 'BEiT', 'MAE', 'PIDNet', 'MSCAN',
-    'DDRNet', 'VPD', 'CSWin', 'MTUNet', 'SwinUnet'
+    'DDRNet', 'VPD', 'CSWin', 'MTUNet', 'SwinUnet', 'SmaAt_UNet'
 ]

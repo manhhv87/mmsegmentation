@@ -13,21 +13,21 @@ model = dict(
 
     backbone=dict(
         type='CSWin',
-        embed_dim=96,
-        depth=[2, 4, 32, 2],
-        num_heads=[4, 8, 16, 32],
-        split_size=[1, 2, 7, 7],
-        drop_path_rate=0.6,
+        embed_dim=64,
+         depth=[1,2,21,1],
+        num_heads=[2,4,8,16],
+        split_size=[1,2,7,7],
+        drop_path_rate=0.3,
         use_chk=False),
 
     decode_head=dict(
-        in_channels=[96, 192, 384, 768],
+        in_channels=[64,128,256,512],
         num_classes=10),
 
     # auxiliary_head=dict(
     #     in_channels=384,
     #     num_classes=10)
-    # )
+)
 
 # AdamW optimizer, no weight decay for position embedding & layer norm in backbone
 optim_wrapper = dict(

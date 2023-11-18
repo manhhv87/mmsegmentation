@@ -367,7 +367,7 @@ class CSWin(BaseModule):
 
         self.norm4 = norm_layer(curr_dim)
 
-    def init_weights(self, pretrained=None):
+    def init_weights(self):
         def _init_weights(m):
             if isinstance(m, nn.Linear):
                 trunc_normal_(m.weight, std=.02)
