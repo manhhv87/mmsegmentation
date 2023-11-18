@@ -470,7 +470,7 @@ class MTUNet(BaseModule):
                  decoder=[1024, 512],
                  pretrained=None,
                  init_cfg=None):
-        super(self).__init__(init_cfg)
+        super().__init__(init_cfg)
 
         assert not (init_cfg and pretrained), \
             'init_cfg and pretrained cannot be setting at the same time'

@@ -34,10 +34,10 @@ model = dict(
         align_corners=False,
         # loss_decode=dict(
         #     type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
-         loss_decode=[
-            dict(type='CrossEntropyLoss', loss_name='loss_ce',
-                 use_sigmoid=False, loss_weight=0.3),
-            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]),
+        loss_decode=[
+        dict(type='CrossEntropyLoss', loss_name='loss_ce',
+                use_sigmoid=False, loss_weight=0.3),
+        dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]),
 
     # auxiliary_head=dict(
     #     type='FCNHead',
