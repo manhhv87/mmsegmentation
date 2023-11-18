@@ -24,10 +24,10 @@ model = dict(
         num_classes=10
     ),
 
-    auxiliary_head=dict(
-        in_channels=384,
-        num_classes=10
-    ))
+    # auxiliary_head=dict(
+    #     in_channels=384,
+    #     num_classes=10)
+    )
 
 # AdamW optimizer, no weight decay for position embedding & layer norm in backbone
 optim_wrapper = dict(
