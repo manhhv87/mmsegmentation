@@ -1,5 +1,5 @@
 _base_ = [
-    '../_base_/models/upernet_cswin.py',
+    '../_base_/models/cswin.py',
     '../_base_/datasets/floodnet.py',
     '../_base_/default_runtime.py',
     '../_base_/schedules/schedule_80k.py'
@@ -22,15 +22,11 @@ model = dict(
         use_checkpoint=False),
 
     decode_head=dict(
-        in_channels=[64,128,256,512],
+        type='GeneralHead',
         num_classes=10,
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
             dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]),
-
-    auxiliary_head=dict(
-        in_channels=384,
-        num_classes=10)
 )
 
 # AdamW optimizer, no weight decay for position embedding & layer norm in backbone

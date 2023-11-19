@@ -7,12 +7,19 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/segformer/mit_b0_20220624-7e0fe6dd.pth'  # noqa
+checkpoint = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/segformer/mit_b2_20220624-66e8bf70.pth'  # noqa
 
 model = dict(
     data_preprocessor=data_preprocessor,
     pretrained=checkpoint,
+
+    backbone=dict(
+      embed_dims=64,
+      num_heads=[1, 2, 5, 8],
+      num_layers=[3, 4, 6, 3]),
+
     decode_head=dict(
+        in_channels=[64, 128, 320, 512],
         num_classes=10,
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),

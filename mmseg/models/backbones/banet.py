@@ -1,5 +1,3 @@
-#  Transformer Meets Convolution: A Bilateral Awareness Network for Semantic Segmentation of Very Fine Resolution Urban Scene Images
-
 """ BANet
 Paper: ``
     - https://arxiv.org/abs/2104.01136

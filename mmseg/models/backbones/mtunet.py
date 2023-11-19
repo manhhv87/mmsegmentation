@@ -4,7 +4,6 @@ import math
 import numpy as np
 import torch
 from torch import nn
-import torch.utils.checkpoint as cp
 from collections import OrderedDict
 
 from timm.models.layers import trunc_normal_

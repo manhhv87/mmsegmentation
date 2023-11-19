@@ -345,7 +345,7 @@ class Decoder(nn.Module):
 
 @MODELS.register_module()
 class UnetfloodnetHead(BaseDecodeHead):
-    def __init__(self, window_size=8, **kwargs):
+    def __init__(self, **kwargs):
         super(UnetfloodnetHead, self).__init__(
             input_transform='multiple_select', **kwargs)
 
