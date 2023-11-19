@@ -11,12 +11,13 @@ checkpoint = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/segfor
 
 model = dict(
     data_preprocessor=data_preprocessor,
-    pretrained=checkpoint,
 
     backbone=dict(
       embed_dims=64,
       num_heads=[1, 2, 5, 8],
-      num_layers=[3, 4, 6, 3]),
+      num_layers=[3, 4, 6, 3],
+      init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
+      ),
 
     decode_head=dict(
         in_channels=[64, 128, 320, 512],

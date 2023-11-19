@@ -11,7 +11,9 @@ checkpoint='open-mmlab://resnet50_v1c'
 
 model = dict(
     data_preprocessor=data_preprocessor,
-    pretrained=checkpoint,
+
+    backbone=dict(init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
+
     decode_head=dict(
         num_classes=10,
         loss_decode=[
