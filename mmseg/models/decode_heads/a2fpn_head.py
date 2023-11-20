@@ -2,8 +2,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import Module, Conv2d, Parameter, Softmax
-from collections import OrderedDict
+from torch.nn import Module, Conv2d, Parameter
 from mmseg.models.decode_heads.decode_head import BaseDecodeHead
 from mmseg.registry import MODELS
 
@@ -151,7 +150,6 @@ class Decoder(nn.Module):
             encoder_channels=(64, 128, 256, 512),
             pyramid_channels=64,
             segmentation_channels=64,
-            class_num=10,
             dropout=0.2):
         super(Decoder, self).__init__()
 
@@ -214,7 +212,7 @@ class A2FPN(BaseDecodeHead):
 
         # Receive 4 stage backbone feature map: 1/4, 1/8, 1/16, 1/32
         inputs = self._transform_inputs(x)
-        x = self.decoder(inputs[0], inputs[1], inputs[2], inputs[3], h, w)
-    
+        x = self.decoder(inputs[0], inputs[1], inputs[2], inputs[3], h, w)    
         x = self.cls_seg(x)        
+        # x = F.interpolate(x, scale_factor=4, mode='bilinear', align_corners=True)
         return x

@@ -1,18 +1,10 @@
 # Copyright (c) OpenMMLab. All rights reserved.
-import warnings
 import torch
 import torch.nn as nn
-from resnet import Resnet18
 from torch.nn import BatchNorm2d
 from torch.nn import Module, Conv2d, Parameter
-from collections import OrderedDict
 
-from timm.models.layers import trunc_normal_
-
-from mmengine.runner import CheckpointLoader
-from mmengine.logging import print_log
-from mmengine.model import BaseModule
-
+from mmseg.models.decode_heads.decode_head import BaseDecodeHead
 from mmseg.registry import MODELS
 
 
@@ -201,7 +193,7 @@ class ContextPath(nn.Module):
         feat16_up = self.up16(feat16_sum)
         feat16_up = self.conv_head16(feat16_up)
 
-        return feat16_up, feat32_up  # x8, x16
+        return feat32_up  # x8, x16
 
     def init_weight(self):
         for ly in self.children():
@@ -211,9 +203,9 @@ class ContextPath(nn.Module):
                     nn.init.constant_(ly.bias, 0)
 
 
-class Output(nn.Module):
+class Decoder(nn.Module):
     def __init__(self, in_chan, mid_chan, n_classes, up_factor=32, *args, **kwargs):
-        super(Output, self).__init__()
+        super(Decoder, self).__init__()
         self.up_factor = up_factor
         out_chan = n_classes * up_factor * up_factor
         self.conv = ConvBNReLU(in_chan, mid_chan, ks=3, stride=1, padding=1)
@@ -236,22 +228,35 @@ class Output(nn.Module):
 
 
 @MODELS.register_module()
-class ABCNet(nn.Module):
-    def __init__(self, band, n_classes):
-        super(ABCNet, self).__init__()
+class ABCNet(BaseDecodeHead):
+    def __init__(self, **kwargs):
+        super(ABCNet, self).__init__(
+            input_transform='multiple_select', **kwargs)
+
+        n_classes = self.num_classes
+        encoder_channels = self.in_channels
+
         self.cp = ContextPath()
         self.sp = SpatialPath()
         self.fam = FeatureAggregationModule(256, 256)
-        self.conv_out = Output(256, 256, n_classes, up_factor=8)
+        self.conv_out = Decoder(encoder_channels[3], 256, n_classes, up_factor=8)
 
         self.init_weight()
 
-    def forward(self, x):
+    def forward(self, x):  
+        print(len(x), x[0].shape, x[1].shape, x[2].shape, x[3].shape)
+
+        x = x[3]
+
+        # x = [torch.stack((y1, y2), dim=1) for _, (y1, y2) in x]
+
+        # print(x.shape)
+
         H, W = x.size()[2:]
 
         inputs = self._transform_inputs(x)
 
-        _, feat_cp32 = self.cp(inputs[2], inputs[3])
+        feat_cp32 = self.cp(inputs[2], inputs[3])
         feat_sp = self.sp(x)
         feat_fuse = self.fam(feat_sp, feat_cp32)
         feat_out = self.conv_out(feat_fuse)   

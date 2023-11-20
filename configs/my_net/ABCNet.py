@@ -1,6 +1,6 @@
 # ABCNet: Attentive bilateral contextual network for efficient semantic segmentation of Fine-Resolution remotely sensed imagery
 _base_ = [
-    '../_base_/models/upernet_abcnet.py',
+    '../_base_/models/abcnet.py',
     '../_base_/datasets/floodnet.py',
     '../_base_/default_runtime.py', 
     '../_base_/schedules/schedule_80k.py'
@@ -8,12 +8,13 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint='https://download.openmmlab.com/mmsegmentation/v0.5/bisenetv2/bisenetv2_fcn_4x8_1024x1024_160k_cityscapes/bisenetv2_fcn_4x8_1024x1024_160k_cityscapes_20210903_000032-e1a2eed6.pth'
+# checkpoint='https://download.openmmlab.com/mmsegmentation/v0.5/bisenetv2/bisenetv2_fcn_4x8_1024x1024_160k_cityscapes/bisenetv2_fcn_4x8_1024x1024_160k_cityscapes_20210903_000032-e1a2eed6.pth'
 
 model = dict(
     data_preprocessor=data_preprocessor,
-    pretrained=checkpoint,
+    # backbone=dict(init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
     decode_head=dict(
+        type='ABCNet',
         num_classes=10,
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
