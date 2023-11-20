@@ -7,7 +7,7 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint='open-mmlab://resnet50_v1c'
+checkpoint='open-mmlab://resnet18_v1c'
 
 model = dict(
     data_preprocessor=data_preprocessor,
@@ -16,6 +16,7 @@ model = dict(
     
     decode_head=dict(
         type='A2FPN',
+        channels=256,   # input channel of x = self.cls_seg(x)
         num_classes=10,
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),

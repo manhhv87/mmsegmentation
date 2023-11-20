@@ -2,7 +2,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision import models
 from torch.nn import Module, Conv2d, Parameter, Softmax
 from collections import OrderedDict
 from mmseg.models.decode_heads.decode_head import BaseDecodeHead
@@ -152,6 +151,7 @@ class Decoder(nn.Module):
             encoder_channels=(64, 128, 256, 512),
             pyramid_channels=64,
             segmentation_channels=64,
+            class_num=10,
             dropout=0.2):
         super(Decoder, self).__init__()
 
@@ -188,11 +188,6 @@ class Decoder(nn.Module):
         s2 = self.s2(p2)
 
         out = self.dropout(self.attention(s5, s4, s3, s2))
-
-        # out = F.interpolate(out, scale_factor=4, mode='bilinear', align_corners=True)
-        out = F.interpolate(out, size=(
-            h, w), mode='bilinear', align_corners=False)
-
         return out
 
     def init_weight(self):
@@ -210,24 +205,16 @@ class A2FPN(BaseDecodeHead):
             input_transform='multiple_select', **kwargs)
 
         encoder_channels = self.in_channels
-        pyramid_channels = self.channels
         dropout = self.dropout_ratio
 
-        self.decoder = Decoder(encoder_channels=encoder_channels, pyramid_channels=pyramid_channels, dropout=dropout)
+        self.decoder = Decoder(encoder_channels=encoder_channels, dropout=dropout)
 
     def forward(self, x):
         h, w = x[0].size()[-2:]
 
-       # Receive 4 stage backbone feature map: 1/4, 1/8, 1/16, 1/32
+        # Receive 4 stage backbone feature map: 1/4, 1/8, 1/16, 1/32
         inputs = self._transform_inputs(x)
-
-        print(len(inputs))
-        print(inputs[0].shape, inputs[1].shape, inputs[2].shape, inputs[3].shape)
-
         x = self.decoder(inputs[0], inputs[1], inputs[2], inputs[3], h, w)
-
-        print(x.shape)
-
-        x = self.cls_seg(x)
-
+    
+        x = self.cls_seg(x)        
         return x
