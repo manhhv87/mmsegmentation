@@ -14,10 +14,12 @@ backbone_norm_cfg = dict(type='LN', eps=1e-6, requires_grad=True)
 model = dict(
     data_preprocessor=data_preprocessor,
     pretrained=checkpoint,
+
+    # vit_small_patch16_384
     backbone=dict(
         img_size=(512, 512),
         embed_dims=384,
-        num_heads=10,
+        num_heads=12,
     ),
 
     decode_head=dict(

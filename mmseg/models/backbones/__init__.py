@@ -26,7 +26,7 @@ from .vit import VisionTransformer
 from .vpd import VPD
 from .cswin_transformer import CSWin
 from .mtunet import MTUNet
-from .swinunet import SwinUnet
+from .swinunet_transformer import SwinUnet
 from .smaatunet import SmaAt_UNet
 
 __all__ = [

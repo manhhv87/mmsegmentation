@@ -5,27 +5,15 @@ from __future__ import division
 import warnings
 from collections import OrderedDict
 
-import copy
-import logging
-import math
-
-from os.path import join as pjoin
-
 import torch
 import torch.nn as nn
-import numpy as np
+import torch.utils.checkpoint as cp
 
-from torch.nn import CrossEntropyLoss, Dropout, Softmax, Linear, Conv2d, LayerNorm
-from torch.nn.modules.utils import _pair
-from scipy import ndimage
-import torch
-import torch.nn as nn
-import torch.utils.checkpoint as checkpoint
 from einops import rearrange
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
+
 from mmengine.logging import print_log
 from mmengine.runner import CheckpointLoader
-
 from mmengine.model import BaseModule
 from mmseg.registry import MODELS
 
@@ -449,7 +437,7 @@ class BasicLayer(nn.Module):
     def forward(self, x):
         for blk in self.blocks:
             if self.use_checkpoint:
-                x = checkpoint.checkpoint(blk, x)
+                x = cp.checkpoint(blk, x)
             else:
                 x = blk(x)
         if self.downsample is not None:
@@ -513,7 +501,7 @@ class BasicLayer_up(nn.Module):
     def forward(self, x):
         for blk in self.blocks:
             if self.use_checkpoint:
-                x = checkpoint.checkpoint(blk, x)
+                x = cp.checkpoint(blk, x)
             else:
                 x = blk(x)
         if self.upsample is not None:
@@ -588,25 +576,25 @@ class SwinTransformerSys(nn.Module):
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False
     """
 
-    def __init__(self, 
-                 img_size=224, 
-                 patch_size=4, 
-                 in_chans=3, 
-                 embed_dim=96, 
-                 depths=[2, 2, 2, 2], 
+    def __init__(self,
+                 img_size=224,
+                 patch_size=4,
+                 in_chans=3,
+                 embed_dim=96,
+                 depths=[2, 2, 2, 2],
                  num_heads=[3, 6, 12, 24],
-                 window_size=7, 
-                 mlp_ratio=4., 
-                 qkv_bias=True, 
+                 window_size=7,
+                 mlp_ratio=4.,
+                 qkv_bias=True,
                  qk_scale=None,
-                 drop_rate=0., 
-                 attn_drop_rate=0., 
+                 drop_rate=0.,
+                 attn_drop_rate=0.,
                  drop_path_rate=0.1,
-                 norm_layer=nn.LayerNorm, 
-                 ape=False, 
+                 norm_layer=nn.LayerNorm,
+                 ape=False,
                  patch_norm=True,
-                 use_checkpoint=False, 
-                 final_upsample="expand_first", 
+                 use_checkpoint=False,
+                 final_upsample="expand_first",
                  **kwargs):
         super().__init__()
 
@@ -810,7 +798,7 @@ class SwinTransformerSys(nn.Module):
 
 @MODELS.register_module()
 class SwinUnet(BaseModule):
-    def __init__(self, 
+    def __init__(self,
                  img_size=224,
                  patch_size=4,
                  in_chans=3,
@@ -826,6 +814,7 @@ class SwinUnet(BaseModule):
                  ape=False,
                  patch_norm=True,
                  use_checkpoint=False,
+                 final_upsample="expand_first",
                  pretrained=None,
                  init_cfg=None):
         super(SwinUnet, self).__init__(init_cfg)
@@ -843,7 +832,7 @@ class SwinUnet(BaseModule):
             raise TypeError('pretrained must be a str or None')
 
         self.pretrained = pretrained
-        
+
         self.swin_unet = SwinTransformerSys(img_size=img_size,
                                             patch_size=patch_size,
                                             in_chans=in_chans,
@@ -858,10 +847,11 @@ class SwinUnet(BaseModule):
                                             drop_path_rate=drop_path_rate,
                                             ape=ape,
                                             patch_norm=patch_norm,
-                                            use_checkpoint=use_checkpoint)
+                                            use_checkpoint=use_checkpoint,
+                                            final_upsample=final_upsample)
 
     def forward(self, x):
         if x.size()[1] == 1:
             x = x.repeat(1, 3, 1, 1)
-        logits = self.swin_unet(x)
-        return logits
+        x = self.swin_unet(x)
+        return x

@@ -1,5 +1,5 @@
 _base_ = [
-    '../_base_/models/upernet_swinunet.py',
+    '../_base_/models/swinunet.py',
     '../_base_/datasets/floodnet.py',
     '../_base_/default_runtime.py',
     '../_base_/schedules/schedule_80k.py'
@@ -11,27 +11,27 @@ checkpoint='https://objects.githubusercontent.com/github-production-release-asse
 
 model = dict(
     data_preprocessor=data_preprocessor,
-    pretrained=checkpoint,
 
     backbone=dict(
         type='SwinUnet',
-        num_heads=8,
-        win_size=4,        
-        bottleneck=1024,
-        encoder=[256, 512],        
-        decoder=[1024, 512]),
+        embed_dim=96,
+        patch_size=4,
+        depths=[2, 2, 2, 2],
+        num_heads=[3, 6, 12, 24],
+        window_size=7,
+        drop_path_rate=0.2,
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
+        ),
 
-    decode_head=dict(
-        type='UPerHead',
+     decode_head=dict(        
+        type='GeneralHead',
+        in_channels=96,
+        channels=96,
         num_classes=10,
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
-            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]),
-
-    auxiliary_head=dict(
-        in_channels=384,
-        num_classes=10
-    ))
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)])
+    )
 
 # AdamW optimizer, no weight decay for position embedding & layer norm in backbone
 optim_wrapper = dict(

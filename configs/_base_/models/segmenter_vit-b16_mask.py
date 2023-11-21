@@ -13,7 +13,7 @@ model = dict(
     type='EncoderDecoder',
     data_preprocessor=data_preprocessor,
     pretrained=None,
-
+    
     backbone=dict(
         type='VisionTransformer',
         img_size=(512, 512),
