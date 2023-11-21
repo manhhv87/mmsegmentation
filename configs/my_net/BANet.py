@@ -1,6 +1,6 @@
 # ABCNet: Attentive bilateral contextual network for efficient semantic segmentation of Fine-Resolution remotely sensed imagery
 _base_ = [
-    '../_base_/models/abcnet.py',
+    '../_base_/models/banet.py',
     '../_base_/datasets/floodnet.py',
     '../_base_/default_runtime.py', 
     '../_base_/schedules/schedule_80k.py'
