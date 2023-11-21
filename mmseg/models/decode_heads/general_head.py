@@ -29,6 +29,10 @@ class GeneralHead(BaseDecodeHead):
     
     def forward(self, inputs):
         """Forward function."""
-        output = self._forward_feature(inputs)
-        output = self.cls_seg(output)
+        if len(inputs) == 3:
+            output = self.cls_seg(inputs)
+        else:
+            output = self._forward_feature(inputs)
+
+        output = self.cls_seg(inputs)
         return output

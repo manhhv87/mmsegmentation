@@ -5,7 +5,7 @@ _base_ = [
     '../_base_/schedules/schedule_80k.py'
 ]
 
-crop_size = (224, 224)
+crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
 # checkpoint='https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/swin/swin_base_patch4_window7_224_20220317-e9b98025.pth'  # noqa'
 
@@ -14,11 +14,12 @@ model = dict(
 
     backbone=dict(
         type='SwinUnet',
+        img_size=512,
         embed_dim=96,
         patch_size=4,
         depths=[2, 2, 2, 2],
         num_heads=[3, 6, 12, 24],
-        window_size=7,
+        window_size=8,
         drop_path_rate=0.2,
         # init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
         ),
