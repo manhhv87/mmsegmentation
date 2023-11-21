@@ -595,10 +595,10 @@ class SwinTransformerSys(nn.Module):
                  patch_norm=True,
                  use_checkpoint=False,
                  final_upsample="expand_first",
+                 init_cfg=None,
                  **kwargs):
         super().__init__()
-
-        # self.num_classes = num_classes
+        
         self.num_layers = len(depths)
         self.embed_dim = embed_dim
         self.ape = ape
@@ -607,6 +607,7 @@ class SwinTransformerSys(nn.Module):
         self.num_features_up = int(embed_dim * 2)
         self.mlp_ratio = mlp_ratio
         self.final_upsample = final_upsample
+        self.init_cfg = init_cfg
 
         # split image into non-overlapping patches
         self.patch_embed = PatchEmbed(
@@ -689,12 +690,10 @@ class SwinTransformerSys(nn.Module):
         if self.final_upsample == "expand_first":
             self.up = FinalPatchExpand_X4(input_resolution=(img_size // patch_size, img_size // patch_size),
                                           dim_scale=4, dim=embed_dim)
-            # self.output = nn.Conv2d(
-            #     in_channels=embed_dim, out_channels=self.num_classes, kernel_size=1, bias=False)
+        # self.output = nn.Conv2d(
+        #     in_channels=embed_dim, out_channels=self.num_classes, kernel_size=1, bias=False)
 
-        self.apply(self._init_weights)
-
-    def init_weights(self, pretrained=None):
+    def init_weights(self):
         def _init_weights(m):
             if isinstance(m, nn.Linear):
                 trunc_normal_(m.weight, std=.02)
@@ -810,6 +809,7 @@ class SwinUnet(BaseModule):
                  qkv_bias=True,
                  qk_scale=None,
                  drop_rate=0.0,
+                 attn_drop_rate=0.0,
                  drop_path_rate=0.1,
                  ape=False,
                  patch_norm=True,
@@ -844,11 +844,14 @@ class SwinUnet(BaseModule):
                                             qkv_bias=qkv_bias,
                                             qk_scale=qk_scale,
                                             drop_rate=drop_rate,
+                                            attn_drop_rate=attn_drop_rate,
                                             drop_path_rate=drop_path_rate,
                                             ape=ape,
                                             patch_norm=patch_norm,
                                             use_checkpoint=use_checkpoint,
-                                            final_upsample=final_upsample)
+                                            final_upsample=final_upsample,
+                                            pretrained=pretrained,
+                                            init_cfg=init_cfg,)
 
     def forward(self, x):
         if x.size()[1] == 1:

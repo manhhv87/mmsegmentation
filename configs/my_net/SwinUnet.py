@@ -5,9 +5,9 @@ _base_ = [
     '../_base_/schedules/schedule_80k.py'
 ]
 
-crop_size = (512, 512)
+crop_size = (224, 224)
 data_preprocessor = dict(size=crop_size)
-checkpoint='https://objects.githubusercontent.com/github-production-release-asset-2e65be/382210636/87c0205e-d6c5-4055-9ce1-adb096034161?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20231117%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20231117T082017Z&X-Amz-Expires=300&X-Amz-Signature=b40a5bdf71fbca20a11ed7a26a3f71d4777e4a75d6faa7c460122ea2ea1a8d1d&X-Amz-SignedHeaders=host&actor_id=67886698&key_id=0&repo_id=382210636&response-content-disposition=attachment%3B%20filename%3Dcswin_base_224.pth&response-content-type=application%2Foctet-stream')
+# checkpoint='https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/swin/swin_base_patch4_window7_224_20220317-e9b98025.pth'  # noqa'
 
 model = dict(
     data_preprocessor=data_preprocessor,
@@ -20,7 +20,7 @@ model = dict(
         num_heads=[3, 6, 12, 24],
         window_size=7,
         drop_path_rate=0.2,
-        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
+        # init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
         ),
 
      decode_head=dict(        
