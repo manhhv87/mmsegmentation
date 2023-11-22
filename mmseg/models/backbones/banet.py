@@ -8,12 +8,14 @@ ResT code and weights: https://github.com/wofmanaf/ResT
 """
 # Copyright (c) OpenMMLab. All rights reserved.
 import warnings
+from collections import OrderedDict
 import torch
 import torch.nn as nn
 from torch.nn import Module, Conv2d, Parameter
-from torchvision import models
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 
+from mmengine.runner import CheckpointLoader
+from mmengine.logging import print_log
 from mmengine.model import BaseModule
 from mmseg.registry import MODELS
 
@@ -517,8 +519,42 @@ class BANet(BaseModule):
         return feat_out
 
     def init_weight(self):
-        for ly in self.children():
-            if isinstance(ly, nn.Conv2d):
-                nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None:
-                    nn.init.constant_(ly.bias, 0)
+        def _init_weights(m):
+            for ly in self.children():
+                if isinstance(ly, nn.Conv2d):
+                    nn.init.kaiming_normal_(ly.weight, a=1)
+                    if not ly.bias is None:
+                        nn.init.constant_(ly.bias, 0)
+
+        if self.init_cfg is None:
+            print_log(f'No pre-trained weights for '
+                      f'{self.__class__.__name__}, '
+                      f'training start from scratch')
+            self.apply(_init_weights)
+        else:
+            assert 'checkpoint' in self.init_cfg, f'Only support ' \
+                                                  f'specify `Pretrained` in ' \
+                                                  f'`init_cfg` in ' \
+                                                  f'{self.__class__.__name__} '
+            ckpt = CheckpointLoader.load_checkpoint(
+                self.init_cfg['checkpoint'], logger=None, map_location='cpu')
+            if 'state_dict' in ckpt:
+                _state_dict = ckpt['state_dict']
+            elif 'model' in ckpt:
+                _state_dict = ckpt['model']
+            else:
+                _state_dict = ckpt
+
+            state_dict = OrderedDict()
+            for k, v in _state_dict.items():
+                if k.startswith('backbone.'):
+                    state_dict[k[9:]] = v
+                else:
+                    state_dict[k] = v
+
+            # strip prefix of state_dict
+            if list(state_dict.keys())[0].startswith('module.'):
+                state_dict = {k[7:]: v for k, v in state_dict.items()}
+
+             # load state_dict
+            self.load_state_dict(state_dict, strict=False)
