@@ -15,26 +15,20 @@ model = dict(
     pretrained=None,
 
     backbone=dict(
-        type='ResNetV1c',
-        depth=18,
-        num_stages=4,
-        out_indices=(0, 1, 2, 3),
-        dilations=(1, 1, 1, 1),
-        strides=(1, 2, 2, 2),
-        norm_cfg=norm_cfg,
-        norm_eval=False,
-        style='pytorch',
-        contract_dilation=True),
+        type='BANet',
+        embed_dims=[64, 128, 256, 512],
+        num_heads=[1, 2, 4, 8],
+        mlp_ratios=[4, 4, 4, 4],
+        qkv_bias=True,
+        depths=[2, 2, 2, 2],
+        sr_ratios=[8, 4, 2, 1],
+        apply_transform=True),
 
     decode_head=dict(
-        type='BANet',
-        in_channels=(64, 128, 256, 512),
-        in_index=(0, 1, 2, 3),
-        channels=64,
-        dropout_ratio=0.2,
+        type='GeneralHead',
+        in_channels=256,
+        channels=256,
         num_classes=10,
-        norm_cfg=norm_cfg,
-        align_corners=False,
         loss_decode=dict(
             type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
 

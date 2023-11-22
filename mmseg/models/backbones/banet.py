@@ -6,12 +6,15 @@ Paper: ``
 
 ResT code and weights: https://github.com/wofmanaf/ResT
 """
+# Copyright (c) OpenMMLab. All rights reserved.
+import warnings
 import torch
 import torch.nn as nn
 from torch.nn import Module, Conv2d, Parameter
 from torchvision import models
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
-from mmseg.models.decode_heads.decode_head import BaseDecodeHead
+
+from mmengine.model import BaseModule
 from mmseg.registry import MODELS
 
 
@@ -337,7 +340,7 @@ class LinearAttention(Module):
 
     def forward(self, x):
         # Apply the feature map to the queries and keys
-        batch_size, chnnels, height, width = x.shape
+        batch_size, chnnels, width, height = x.shape
         Q = self.query_conv(x).view(batch_size, -1, width * height)
         K = self.key_conv(x).view(batch_size, -1, width * height)
         V = self.value_conv(x).view(batch_size, -1, width * height)
@@ -395,38 +398,27 @@ class Attention_Embedding(nn.Module):
         return output
 
 
-class FeatureAggregationModule(nn.Module):
-    def __init__(self, in_chan, out_chan):
-        super(FeatureAggregationModule, self).__init__()
-        self.convblk = ConvBNReLU(in_chan, out_chan, ks=1, stride=1, padding=0)
-        self.conv_atten = LinearAttention(out_chan)
-        self.init_weight()
+class DependencyPath(nn.Module):
+    def __init__(self,
+                 embed_dims=[64, 128, 256, 512],
+                 num_heads=[1, 2, 4, 8],
+                 mlp_ratios=[4, 4, 4, 4],
+                 qkv_bias=True,
+                 depths=[2, 2, 2, 2],
+                 sr_ratios=[8, 4, 2, 1],
+                 apply_transform=True, **kwargs):
+        super(DependencyPath, self).__init__()
+        self.ResT = ResT(embed_dims=embed_dims, num_heads=num_heads, mlp_ratios=mlp_ratios, qkv_bias=qkv_bias,
+                         depths=depths, sr_ratios=sr_ratios, apply_transform=apply_transform, **kwargs)
+        self.AE = Attention_Embedding(embed_dims[-1], embed_dims[-2])
+        self.conv_avg = ConvBNReLU(
+            embed_dims[-2], embed_dims[-3], ks=1, stride=1, padding=0)
+        self.up = nn.Upsample(scale_factor=2.)
 
-    def forward(self, fsp, fcp):
-        fcat = torch.cat([fsp, fcp], dim=1)
-        feat = self.convblk(fcat)
-        atten = self.conv_atten(feat)
-        feat_atten = torch.mul(feat, atten)
-        feat_out = feat_atten + feat
-        return feat_out
-
-    def init_weight(self):
-        for ly in self.children():
-            if isinstance(ly, nn.Conv2d):
-                nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None:
-                    nn.init.constant_(ly.bias, 0)
-
-    def get_params(self):
-        wd_params, nowd_params = [], []
-        for name, module in self.named_modules():
-            if isinstance(module, (nn.Linear, nn.Conv2d)):
-                wd_params.append(module.weight)
-                if not module.bias is None:
-                    nowd_params.append(module.bias)
-            elif isinstance(module, nn.modules.batchnorm._BatchNorm):
-                nowd_params += list(module.parameters())
-        return wd_params, nowd_params
+    def forward(self, x):
+        e3, e4 = self.ResT(x)
+        e = self.conv_avg(self.AE(e4, e3))
+        return self.up(e)
 
 
 class TexturePath(nn.Module):
@@ -452,111 +444,20 @@ class TexturePath(nn.Module):
                 if not ly.bias is None:
                     nn.init.constant_(ly.bias, 0)
 
-    def get_params(self):
-        wd_params, nowd_params = [], []
-        for name, module in self.named_modules():
-            if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
-                wd_params.append(module.weight)
-                if not module.bias is None:
-                    nowd_params.append(module.bias)
-            elif isinstance(module, nn.modules.batchnorm._BatchNorm):
-                nowd_params += list(module.parameters())
-        return wd_params, nowd_params
 
-
-def rest_lite(pretrained=True, weight_path='pretrain_weights/rest_lite.pth',  **kwargs):
-    model = ResT(embed_dims=[64, 128, 256, 512], num_heads=[1, 2, 4, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=True,
-                 depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1], apply_transform=True, **kwargs)
-    if pretrained and weight_path is not None:
-        old_dict = torch.load(weight_path)
-        model_dict = model.state_dict()
-        old_dict = {k: v for k, v in old_dict.items() if (k in model_dict)}
-        model_dict.update(old_dict)
-        model.load_state_dict(model_dict)
-    return model
-
-
-class DependencyPath(nn.Module):
-    def __init__(self, weight_path='pretrain_weights/rest_lite.pth'):
-        super(DependencyPath, self).__init__()
-        self.ResT = rest_lite(weight_path=weight_path)
-        self.AE = Attention_Embedding(512, 256)
-        self.conv_avg = ConvBNReLU(256, 128, ks=1, stride=1, padding=0)
-        self.up = nn.Upsample(scale_factor=2.)
-
-    def forward(self, x):
-        e3, e4 = self.ResT(x)
-
-        e = self.conv_avg(self.AE(e4, e3))
-
-        return self.up(e)
-
-    def get_params(self):
-        wd_params, nowd_params = [], []
-        for name, module in self.named_modules():
-            if isinstance(module, (nn.Linear, nn.Conv2d)):
-                wd_params.append(module.weight)
-                if not module.bias is None:
-                    nowd_params.append(module.bias)
-            elif isinstance(module, nn.modules.batchnorm._BatchNorm):
-                nowd_params += list(module.parameters())
-        return wd_params, nowd_params
-
-
-class Output(nn.Module):
-    def __init__(self, in_chan, mid_chan, n_classes, up_factor=32, *args, **kwargs):
-        super(Output, self).__init__()
-        self.up_factor = up_factor
-        out_chan = n_classes * up_factor * up_factor
-        self.conv = ConvBNReLU(in_chan, mid_chan, ks=3, stride=1, padding=1)
-        self.conv_out = nn.Conv2d(mid_chan, out_chan, kernel_size=1, bias=True)
-        self.up = nn.PixelShuffle(up_factor)
+class FeatureAggregationModule(nn.Module):
+    def __init__(self, in_chan, out_chan):
+        super(FeatureAggregationModule, self).__init__()
+        self.convblk = ConvBNReLU(in_chan, out_chan, ks=1, stride=1, padding=0)
+        self.conv_atten = LinearAttention(out_chan)
         self.init_weight()
 
-    def forward(self, x):
-        x = self.conv(x)
-        x = self.conv_out(x)
-        x = self.up(x)
-        return x
-
-    def init_weight(self):
-        for ly in self.children():
-            if isinstance(ly, nn.Conv2d):
-                nn.init.kaiming_normal_(ly.weight, a=1)
-                if not ly.bias is None:
-                    nn.init.constant_(ly.bias, 0)
-
-    def get_params(self):
-        wd_params, nowd_params = [], []
-        for name, module in self.named_modules():
-            if isinstance(module, (nn.Linear, nn.Conv2d)):
-                wd_params.append(module.weight)
-                if not module.bias is None:
-                    nowd_params.append(module.bias)
-            elif isinstance(module, nn.modules.batchnorm._BatchNorm):
-                nowd_params += list(module.parameters())
-        return wd_params, nowd_params
-    
-
-@MODELS.register_module()
-class BANet(BaseDecodeHead):
-    def __init__(self, num_classes=6, weight_path='pretrain_weights/rest_lite.pth'):
-        # path of pretrained weight file of ResT-lite  or None, recommend use.
-        super(BANet, self).__init__()
-
-        self.cp = DependencyPath(weight_path=weight_path)
-        self.sp = TexturePath()
-        self.fam = FeatureAggregationModule(256, 256)
-        self.conv_out = Output(256, 256, num_classes, up_factor=8)
-        self.init_weight()
-
-    def forward(self, x):
-        feat = self.cp(x)
-        feat_sp = self.sp(x)
-        feat_fuse = self.fam(feat_sp, feat)
-
-        feat_out = self.conv_out(feat_fuse)
-
+    def forward(self, fsp, fcp):
+        fcat = torch.cat([fsp, fcp], dim=1)
+        feat = self.convblk(fcat)
+        atten = self.conv_atten(feat)
+        feat_atten = torch.mul(feat, atten)
+        feat_out = feat_atten + feat
         return feat_out
 
     def init_weight(self):
@@ -566,14 +467,58 @@ class BANet(BaseDecodeHead):
                 if not ly.bias is None:
                     nn.init.constant_(ly.bias, 0)
 
-    def get_params(self):
-        wd_params, nowd_params, lr_mul_wd_params, lr_mul_nowd_params = [], [], [], []
-        for name, child in self.named_children():
-            child_wd_params, child_nowd_params = child.get_params()
-            if isinstance(child, (Attention_Embedding, Output)):
-                lr_mul_wd_params += child_wd_params
-                lr_mul_nowd_params += child_nowd_params
-            else:
-                wd_params += child_wd_params
-                nowd_params += child_nowd_params
-        return wd_params, nowd_params, lr_mul_wd_params, lr_mul_nowd_params
+
+@MODELS.register_module()
+class BANet(BaseModule):
+    def __init__(self,
+                 embed_dims=[64, 128, 256, 512],
+                 num_heads=[1, 2, 4, 8],
+                 mlp_ratios=[4, 4, 4, 4],
+                 qkv_bias=True,
+                 depths=[2, 2, 2, 2],
+                 sr_ratios=[8, 4, 2, 1],
+                 apply_transform=True,
+                 pretrained=None,
+                 init_cfg=None):
+        super().__init__(init_cfg)
+
+        assert not (init_cfg and pretrained), \
+            'init_cfg and pretrained cannot be setting at the same time'
+
+        if isinstance(pretrained, str):
+            warnings.warn('DeprecationWarning: pretrained is deprecated, '
+                          'please use "init_cfg" instead')
+            init_cfg = dict(type='Pretrained', checkpoint=pretrained)
+        elif pretrained is None:
+            init_cfg = init_cfg
+        else:
+            raise TypeError('pretrained must be a str or None')
+
+        self.pretrained = pretrained
+
+        self.cp = DependencyPath(embed_dims=embed_dims,
+                                 num_heads=num_heads,
+                                 mlp_ratios=mlp_ratios,
+                                 qkv_bias=qkv_bias,
+                                 depths=depths,
+                                 sr_ratios=sr_ratios,
+                                 apply_transform=apply_transform
+                                 )
+        self.sp = TexturePath()
+        self.fam = FeatureAggregationModule(256, 256)
+        self.conv = ConvBNReLU(256, 256, ks=3, stride=1, padding=1)
+        self.init_weight()
+
+    def forward(self, x):
+        feat_cp = self.cp(x)
+        feat_sp = self.sp(x)
+        feat_fuse = self.fam(feat_sp, feat_cp)
+        feat_out = self.conv(feat_fuse)
+        return feat_out
+
+    def init_weight(self):
+        for ly in self.children():
+            if isinstance(ly, nn.Conv2d):
+                nn.init.kaiming_normal_(ly.weight, a=1)
+                if not ly.bias is None:
+                    nn.init.constant_(ly.bias, 0)

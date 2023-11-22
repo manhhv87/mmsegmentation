@@ -289,7 +289,7 @@ class CSWin(BaseModule):
                  use_checkpoint=False,
                  pretrained=None,
                  init_cfg=None):
-        super().__init__(init_cfg)        
+        super().__init__(init_cfg)
 
         assert not (init_cfg and pretrained), \
             'init_cfg and pretrained cannot be setting at the same time'
@@ -416,7 +416,7 @@ class CSWin(BaseModule):
         x = x.view(B, H, W, C).permute(0, 3, 1, 2).contiguous()
         return x
 
-    def forward_features(self, x):       
+    def forward_features(self, x):
         B = x.shape[0]
         x = self.stage1_conv_embed[0](x)  # B, C, H, W
         B, C, H, W = x.size()

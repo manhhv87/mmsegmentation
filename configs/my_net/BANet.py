@@ -2,7 +2,7 @@
 _base_ = [
     '../_base_/models/banet.py',
     '../_base_/datasets/floodnet.py',
-    '../_base_/default_runtime.py', 
+    '../_base_/default_runtime.py',
     '../_base_/schedules/schedule_80k.py'
 ]
 
@@ -12,13 +12,25 @@ data_preprocessor = dict(size=crop_size)
 
 model = dict(
     data_preprocessor=data_preprocessor,
-    # backbone=dict(init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
-    decode_head=dict(
+
+    backbone=dict(
         type='BANet',
+        embed_dims=[64, 128, 256, 512],
+        num_heads=[1, 2, 4, 8],
+        mlp_ratios=[4, 4, 4, 4],
+        qkv_bias=True,
+        depths=[2, 2, 2, 2],
+        sr_ratios=[8, 4, 2, 1],
+        apply_transform=True),
+
+    decode_head=dict(
+        type='GeneralHead',
         num_classes=10,
         loss_decode=[
-            dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
-            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]))
+            dict(type='CrossEntropyLoss', loss_name='loss_ce',
+                 use_sigmoid=False, loss_weight=0.3),
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)])
+)
 
 optim_wrapper = dict(
     _delete_=True,
