@@ -8,16 +8,31 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
+checkpoint='open-mmlab://resnet18_v1c'
+
+norm_cfg = dict(type='SyncBN', requires_grad=True)
 
 model = dict(
     data_preprocessor=data_preprocessor,
-    # backbone=dict(init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
+
+    backbone=dict(
+        context_channels=(128, 256, 512),
+        spatial_channels=(64, 64, 64, 128),
+        out_channels=256,
+        backbone_cfg=dict(
+            type='ResNet', 
+            depth=18,
+            init_cfg=dict(type='Pretrained', checkpoint=checkpoint))),
+
     decode_head=dict(
-        type='ABCNet',
+        type='FCNHead',
+        in_channels=256, 
+        channels=256, 
         num_classes=10,
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
-            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]))
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)])
+)
 
 optim_wrapper = dict(
     _delete_=True,

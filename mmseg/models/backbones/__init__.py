@@ -29,6 +29,7 @@ from .mtunet import MTUNet
 from .swinunet_transformer import SwinUnet
 from .smaatunet import SmaAt_UNet
 from .banet import BANet
+from .abcnet import ABCNet
 
 __all__ = [
     'ResNet', 'ResNetV1c', 'ResNetV1d', 'ResNeXt', 'HRNet', 'FastSCNN',
@@ -36,5 +37,5 @@ __all__ = [
     'VisionTransformer', 'SwinTransformer', 'MixVisionTransformer',
     'BiSeNetV1', 'BiSeNetV2', 'ICNet', 'TIMMBackbone', 'ERFNet', 'PCPVT',
     'SVT', 'STDCNet', 'STDCContextPathNet', 'BEiT', 'MAE', 'PIDNet', 'MSCAN',
-    'DDRNet', 'VPD', 'CSWin', 'MTUNet', 'SwinUnet', 'SmaAt_UNet', 'BANet'
+    'DDRNet', 'VPD', 'CSWin', 'MTUNet', 'SwinUnet', 'SmaAt_UNet', 'BANet', 'ABCNet'
 ]
