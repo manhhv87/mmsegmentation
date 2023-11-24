@@ -3,11 +3,13 @@ import warnings
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.utils.checkpoint as checkpoint
+import torch.utils.checkpoint as cp
 import numpy as np
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 
-from mmengine.runner.checkpoint import _load_checkpoint
+from mmengine.runner import CheckpointLoader
+from mmengine.logging import print_log
+
 from mmengine.model import BaseModule
 from mmseg.registry import MODELS
 
@@ -466,7 +468,7 @@ class BasicLayer(nn.Module):
         for blk in self.blocks:
             blk.H, blk.W = H, W
             if self.use_checkpoint:
-                x = checkpoint.checkpoint(blk, x, attn_mask)
+                x = cp.checkpoint(blk, x, attn_mask)
             else:
                 x = blk(x, attn_mask)
         if self.downsample is not None:
@@ -678,14 +680,39 @@ class SwinTransformer(nn.Module):
                 nn.init.constant_(m.bias, 0)
                 nn.init.constant_(m.weight, 1.0)
 
-        if isinstance(pretrained, str):
+        if self.init_cfg is None:
+            print_log(f'No pre-trained weights for '
+                      f'{self.__class__.__name__}, '
+                      f'training start from scratch')
             self.apply(_init_weights)
-            logger = get_root_logger()
-            load_checkpoint(self, pretrained, strict=False, logger=logger)
-        elif pretrained is None:
-            self.apply(_init_weights)
+
         else:
-            raise TypeError('pretrained must be a str or None')
+            assert 'checkpoint' in self.init_cfg, f'Only support ' \
+                                                  f'specify `Pretrained` in ' \
+                                                  f'`init_cfg` in ' \
+                                                  f'{self.__class__.__name__} '
+            ckpt = CheckpointLoader.load_checkpoint(
+                self.init_cfg['checkpoint'], logger=None, map_location='cpu')
+            if 'state_dict' in ckpt:
+                _state_dict = ckpt['state_dict']
+            elif 'model' in ckpt:
+                _state_dict = ckpt['model']
+            else:
+                _state_dict = ckpt
+
+            state_dict = OrderedDict()
+            for k, v in _state_dict.items():
+                if k.startswith('backbone.'):
+                    state_dict[k[9:]] = v
+                else:
+                    state_dict[k] = v
+
+            # strip prefix of state_dict
+            if list(state_dict.keys())[0].startswith('module.'):
+                state_dict = {k[7:]: v for k, v in state_dict.items()}
+
+             # load state_dict
+            self.load_state_dict(state_dict, strict=False)
 
     def forward(self, x):
         """Forward function."""
@@ -863,8 +890,7 @@ class Decoder(nn.Module):
     def __init__(self,
                  encoder_channels=(96, 192, 384, 768),
                  dropout=0.05,
-                 atrous_rates=(6, 12),
-                 num_classes=6):
+                 atrous_rates=(6, 12)):
         super(Decoder, self).__init__()
 
         self.dcfam = DCFAM(encoder_channels, atrous_rates)
@@ -925,8 +951,7 @@ class DCSwin(BaseModule):
 
         self.backbone = SwinTransformer(
             embed_dim=embed_dim, depths=depths, num_heads=num_heads, frozen_stages=frozen_stages)
-        self.decoder = Decoder(encoder_channels, dropout,
-                               atrous_rates, num_classes)
+        self.decoder = Decoder(encoder_channels, dropout, atrous_rates)
 
     def forward(self, x):
         x1, x2, x3, x4 = self.backbone(x)
