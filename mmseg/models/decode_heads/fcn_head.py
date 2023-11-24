@@ -88,7 +88,7 @@ class FCNHead(BaseDecodeHead):
         if len(inputs) == 3:
             feats = self.convs(inputs)
         else:
-            x = self._transform_inputs(inputs)
+            inputs = self._transform_inputs(inputs)
             feats = self.convs(inputs)
 
         if self.concat_input:
