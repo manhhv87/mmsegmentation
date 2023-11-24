@@ -1,4 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+import warnings
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,22 +14,6 @@ from mmseg.registry import MODELS
 
 def l2_norm(x):
     return torch.einsum("bcn, bn->bcn", x, 1 / torch.norm(x, p=2, dim=-2))
-
-
-# class MaxPoolLayer(nn.Sequential):
-#     def __init__(self, kernel_size=3, dilation=1, stride=1):
-#         super(MaxPoolLayer, self).__init__(
-#             nn.MaxPool2d(kernel_size=kernel_size, dilation=dilation, stride=stride,
-#                          padding=((stride - 1) + dilation * (kernel_size - 1)) // 2)
-#         )
-
-
-# class AvgPoolLayer(nn.Sequential):
-#     def __init__(self, kernel_size=3, stride=1):
-#         super(AvgPoolLayer, self).__init__(
-#             nn.AvgPool2d(kernel_size=kernel_size, stride=stride,
-#                          padding=(kernel_size-1)//2)
-#         )
 
 
 class Conv(nn.Sequential):
@@ -58,30 +43,6 @@ class ConvBNReLU(nn.Sequential):
         )
 
 
-class SeparableConv(nn.Sequential):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, dilation=1):
-        super(SeparableConv, self).__init__(
-            nn.Conv2d(in_channels, in_channels, kernel_size, stride=stride, dilation=dilation,
-                      padding=((stride - 1) + dilation *
-                               (kernel_size - 1)) // 2,
-                      groups=in_channels, bias=False),
-            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
-        )
-
-
-class SeparableConvBN(nn.Sequential):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, dilation=1,
-                 norm_layer=nn.BatchNorm2d):
-        super(SeparableConvBN, self).__init__(
-            nn.Conv2d(in_channels, in_channels, kernel_size, stride=stride, dilation=dilation,
-                      padding=((stride - 1) + dilation *
-                               (kernel_size - 1)) // 2,
-                      groups=in_channels, bias=False),
-            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
-            norm_layer(out_channels)
-        )
-
-
 class SeparableConvBNReLU(nn.Sequential):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, dilation=1,
                  norm_layer=nn.BatchNorm2d):
@@ -94,48 +55,6 @@ class SeparableConvBNReLU(nn.Sequential):
             norm_layer(out_channels),
             nn.ReLU()
         )
-
-
-class TransposeConv(nn.Sequential):
-    def __init__(self, in_channels, out_channels, kernel_size=2, stride=2):
-        super(TransposeConv, self).__init__(
-            nn.ConvTranspose2d(in_channels, out_channels,
-                               kernel_size=kernel_size, stride=stride)
-        )
-
-
-class TransposeConvBN(nn.Sequential):
-    def __init__(self, in_channels, out_channels, kernel_size=2, stride=2, norm_layer=nn.BatchNorm2d):
-        super(TransposeConvBN, self).__init__(
-            nn.ConvTranspose2d(in_channels, out_channels,
-                               kernel_size=kernel_size, stride=stride),
-            norm_layer(out_channels)
-        )
-
-
-class TransposeConvBNReLu(nn.Sequential):
-    def __init__(self, in_channels, out_channels, kernel_size=2, stride=2, norm_layer=nn.BatchNorm2d):
-        super(TransposeConvBNReLu, self).__init__(
-            nn.ConvTranspose2d(in_channels, out_channels,
-                               kernel_size=kernel_size, stride=stride),
-            norm_layer(out_channels),
-            nn.ReLU()
-        )
-
-
-class PyramidPool(nn.Sequential):
-    def __init__(self, in_channels, out_channels, pool_size=1, norm_layer=nn.BatchNorm2d):
-        super(PyramidPool, self).__init__(
-            nn.AdaptiveAvgPool2d(pool_size),
-            nn.Conv2d(in_channels, out_channels, 1, bias=False),
-            norm_layer(out_channels),
-            nn.ReLU())
-
-    def forward(self, x):
-        size = x.shape[-2:]
-        for mod in self:
-            x = mod(x)
-        return F.interpolate(x, size=size, mode='bilinear', align_corners=False)
 
 
 class Mlp(nn.Module):
@@ -734,14 +653,39 @@ class SwinTransformer(nn.Module):
                 for param in m.parameters():
                     param.requires_grad = False
 
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
+    # def _init_weights(self, m):
+    #     if isinstance(m, nn.Linear):
+    #         trunc_normal_(m.weight, std=.02)
+    #         if isinstance(m, nn.Linear) and m.bias is not None:
+    #             nn.init.constant_(m.bias, 0)
+    #     elif isinstance(m, nn.LayerNorm):
+    #         nn.init.constant_(m.bias, 0)
+    #         nn.init.constant_(m.weight, 1.0)
+    def init_weights(self, pretrained=None):
+        """Initialize the weights in backbone.
+
+        Args:
+            pretrained (str, optional): Path to pre-trained weights.
+                Defaults to None.
+        """
+
+        def _init_weights(m):
+            if isinstance(m, nn.Linear):
+                trunc_normal_(m.weight, std=.02)
+                if isinstance(m, nn.Linear) and m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.LayerNorm):
                 nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
+                nn.init.constant_(m.weight, 1.0)
+
+        if isinstance(pretrained, str):
+            self.apply(_init_weights)
+            logger = get_root_logger()
+            load_checkpoint(self, pretrained, strict=False, logger=logger)
+        elif pretrained is None:
+            self.apply(_init_weights)
+        else:
+            raise TypeError('pretrained must be a str or None')
 
     def forward(self, x):
         """Forward function."""
@@ -880,6 +824,7 @@ class DownConnection(nn.Module):
 class DCFAM(nn.Module):
     def __init__(self, encoder_channels=(96, 192, 384, 768), atrous_rates=(6, 12)):
         super(DCFAM, self).__init__()
+
         rate_1, rate_2 = tuple(atrous_rates)
         self.conv4 = Conv(
             encoder_channels[3], encoder_channels[3], kernel_size=1)
@@ -921,25 +866,25 @@ class Decoder(nn.Module):
                  atrous_rates=(6, 12),
                  num_classes=6):
         super(Decoder, self).__init__()
+
         self.dcfam = DCFAM(encoder_channels, atrous_rates)
-        self.dropout = nn.Dropout2d(p=dropout, inplace=True)
-        self.segmentation_head = nn.Sequential(
-            ConvBNReLU(encoder_channels[0], encoder_channels[0]),
-            Conv(encoder_channels[0], num_classes, kernel_size=1),
-            nn.UpsamplingBilinear2d(scale_factor=4))
         self.up = nn.Sequential(
             ConvBNReLU(encoder_channels[1], encoder_channels[0]),
             nn.UpsamplingNearest2d(scale_factor=2)
         )
+        self.dropout = nn.Dropout2d(p=dropout, inplace=True)
 
+        # self.segmentation_head = nn.Sequential(
+        #     ConvBNReLU(encoder_channels[0], encoder_channels[0]),
+        #     Conv(encoder_channels[0], num_classes, kernel_size=1),
+        #     nn.UpsamplingBilinear2d(scale_factor=4))
+               
         self.init_weight()
 
     def forward(self, x1, x2, x3, x4):
         out1, out2 = self.dcfam(x1, x2, x3, x4)
         x = out1 + self.up(out2)
         x = self.dropout(x)
-        x = self.segmentation_head(x)
-
         return x
 
     def init_weight(self):
@@ -950,17 +895,34 @@ class Decoder(nn.Module):
                     nn.init.constant_(m.bias, 0)
 
 
-class DCSwin(nn.Module):
+@MODELS.register_module()
+class DCSwin(BaseModule):
     def __init__(self,
                  encoder_channels=(96, 192, 384, 768),
                  dropout=0.05,
                  atrous_rates=(6, 12),
-                 num_classes=6,
                  embed_dim=128,
                  depths=(2, 2, 18, 2),
                  num_heads=(4, 8, 16, 32),
-                 frozen_stages=2):
-        super(DCSwin, self).__init__()
+                 frozen_stages=2,
+                 pretrained=None,
+                 init_cfg=None):
+        super(self).__init__(init_cfg)
+
+        assert not (init_cfg and pretrained), \
+            'init_cfg and pretrained cannot be setting at the same time'
+
+        if isinstance(pretrained, str):
+            warnings.warn('DeprecationWarning: pretrained is deprecated, '
+                          'please use "init_cfg" instead')
+            init_cfg = dict(type='Pretrained', checkpoint=pretrained)
+        elif pretrained is None:
+            init_cfg = init_cfg
+        else:
+            raise TypeError('pretrained must be a str or None')
+
+        self.pretrained = pretrained
+
         self.backbone = SwinTransformer(
             embed_dim=embed_dim, depths=depths, num_heads=num_heads, frozen_stages=frozen_stages)
         self.decoder = Decoder(encoder_channels, dropout,

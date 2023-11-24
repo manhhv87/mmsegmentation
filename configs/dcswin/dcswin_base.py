@@ -1,15 +1,60 @@
-def dcswin_base(pretrained=True, num_classes=4, weight_path='pretrain_weights/stseg_base.pth'):
-    # pretrained weights are load from official repo of Swin Transformer
-    model = DCSwin(encoder_channels=(128, 256, 512, 1024),
-                   num_classes=num_classes,
-                   embed_dim=128,
-                   depths=(2, 2, 18, 2),
-                   num_heads=(4, 8, 16, 32),
-                   frozen_stages=2)
-    if pretrained and weight_path is not None:
-        old_dict = torch.load(weight_path)['state_dict']
-        model_dict = model.state_dict()
-        old_dict = {k: v for k, v in old_dict.items() if (k in model_dict)}
-        model_dict.update(old_dict)
-        model.load_state_dict(model_dict)
-    return model
+_base_ = [
+    '../_base_/models/dcswin.py',
+    '../_base_/datasets/floodnet.py',
+    '../_base_/default_runtime.py',
+    '../_base_/schedules/schedule_80k.py'
+]
+
+crop_size = (512, 512)
+data_preprocessor = dict(size=crop_size)
+checkpoint='https://objects.githubusercontent.com/github-production-release-asset-2e65be/382210636/5340f4a2-6c80-4db6-afaf-78752ba23224?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20231119%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20231119T054251Z&X-Amz-Expires=300&X-Amz-Signature=d177c3c7c61341b5f13138eaa5d357fb8e6ecdcfb02ea0ef8e8f44d921c5e194&X-Amz-SignedHeaders=host&actor_id=67886698&key_id=0&repo_id=382210636&response-content-disposition=attachment%3B%20filename%3Dcswin_small_224.pth&response-content-type=application%2Foctet-stream'
+
+model = dict(
+    data_preprocessor=data_preprocessor,
+
+    backbone=dict(
+        type='DCSwin',
+        encoder_channels=(128, 256, 512, 1024),
+        embed_dim=128,
+        depths=(2, 2, 18, 2),
+        num_heads=(4, 8, 16, 32),
+        frozen_stages=2,
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
+    ),
+    
+    decode_head=dict(
+        type='FCNHead',
+        in_channels=128,
+        channels=128,
+        num_classes=10,
+        loss_decode=[
+            dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)])
+)
+
+# AdamW optimizer, no weight decay for position embedding & layer norm in backbone
+optim_wrapper = dict(
+    _delete_=True,
+    type='OptimWrapper',
+    optimizer=dict(
+        type='AdamW', lr=0.00006, betas=(0.9, 0.999), weight_decay=0.01),
+    paramwise_cfg=dict(custom_keys={'absolute_pos_embed': dict(decay_mult=0.),
+                                    'relative_position_bias_table': dict(decay_mult=0.),
+                                    'norm': dict(decay_mult=0.)}))
+
+param_scheduler = [
+    dict(
+        type='LinearLR', start_factor=1e-6, by_epoch=False, begin=0, end=8000),
+    dict(
+        type='PolyLR',
+        eta_min=0.0,
+        power=1.0,
+        begin=8000,
+        end=80000,
+        by_epoch=False,
+    )
+]
+
+train_dataloader = dict(batch_size=8, num_workers=2)
+val_dataloader = dict(batch_size=8, num_workers=2)
+test_dataloader = val_dataloader
