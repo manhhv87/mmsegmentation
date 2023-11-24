@@ -1,22 +1,38 @@
+# ABCNet: Attentive bilateral contextual network for efficient semantic segmentation of Fine-Resolution remotely sensed imagery
 _base_ = [
-    '../_base_/models/bisenetv2.py',
+    '../_base_/models/banet.py',
     '../_base_/datasets/floodnet.py',
-    '../_base_/default_runtime.py', 
+    '../_base_/default_runtime.py',
     '../_base_/schedules/schedule_80k.py'
 ]
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint='https://download.openmmlab.com/mmsegmentation/v0.5/bisenetv2/bisenetv2_fcn_4x8_1024x1024_160k_cityscapes/bisenetv2_fcn_4x8_1024x1024_160k_cityscapes_20210903_000032-e1a2eed6.pth'
+# checkpoint='https://download.openmmlab.com/mmsegmentation/v0.5/bisenetv2/bisenetv2_fcn_4x8_1024x1024_160k_cityscapes/bisenetv2_fcn_4x8_1024x1024_160k_cityscapes_20210903_000032-e1a2eed6.pth'
 
 model = dict(
     data_preprocessor=data_preprocessor,
-    pretrained=checkpoint,
+    # pretrained=checkpoint,
+    backbone=dict(
+        type='CoaT',
+        in_channels=3,
+        patch_size=4, 
+        in_channels=3, 
+        embed_dims=[152, 152, 152, 152],
+        serial_depths=[2, 2, 2, 2], 
+        parallel_depth=6,
+        num_heads=8, 
+        mlp_ratios=[4, 4, 4, 4], 
+        init_cfg=None),
+
     decode_head=dict(
-        num_classes=10,
+        type='LinearHead',
+        in_channels=152,        
+        num_classes=10,       
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
-            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]))
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)])
+)
 
 optim_wrapper = dict(
     _delete_=True,

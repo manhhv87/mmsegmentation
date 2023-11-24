@@ -1,47 +1,3 @@
-# # CoaT.
-# @register_model
-# def coat_tiny(**kwargs):
-#     model = CoaT(patch_size=4, embed_dims=[152, 152, 152, 152], serial_depths=[2, 2, 2, 2], parallel_depth=6, num_heads=8, mlp_ratios=[4, 4, 4, 4], **kwargs)
-#     model.default_cfg = _cfg_coat()
-#     return model
-
-# @register_model
-# def coat_mini(**kwargs):
-#     model = CoaT(patch_size=4, embed_dims=[152, 216, 216, 216], serial_depths=[2, 2, 2, 2], parallel_depth=6, num_heads=8, mlp_ratios=[4, 4, 4, 4], **kwargs)
-#     model.default_cfg = _cfg_coat()
-#     return model
-
-# @register_model
-# def coat_small(**kwargs):
-#     model = CoaT(patch_size=4, embed_dims=[152, 320, 320, 320], serial_depths=[2, 2, 2, 2], parallel_depth=6, num_heads=8, mlp_ratios=[4, 4, 4, 4], **kwargs)
-#     model.default_cfg = _cfg_coat()
-#     return model
-
-# # CoaT-Lite.
-# @register_model
-# def coat_lite_tiny(**kwargs):
-#     model = CoaT(patch_size=4, embed_dims=[64, 128, 256, 320], serial_depths=[2, 2, 2, 2], parallel_depth=0, num_heads=8, mlp_ratios=[8, 8, 4, 4], **kwargs)
-#     model.default_cfg = _cfg_coat()
-#     return model
-
-# @register_model
-# def coat_lite_mini(**kwargs):
-#     model = CoaT(patch_size=4, embed_dims=[64, 128, 320, 512], serial_depths=[2, 2, 2, 2], parallel_depth=0, num_heads=8, mlp_ratios=[8, 8, 4, 4], **kwargs)
-#     model.default_cfg = _cfg_coat()
-#     return model
-
-# @register_model
-# def coat_lite_small(**kwargs):
-#     model = CoaT(patch_size=4, embed_dims=[64, 128, 320, 512], serial_depths=[3, 4, 6, 3], parallel_depth=0, num_heads=8, mlp_ratios=[8, 8, 4, 4], **kwargs)
-#     model.default_cfg = _cfg_coat()
-#     return model
-
-# @register_model
-# def coat_lite_medium(**kwargs):
-#     model = CoaT(patch_size=4, embed_dims=[128, 256, 320, 512], serial_depths=[3, 6, 10, 8], parallel_depth=0, num_heads=8, mlp_ratios=[4, 4, 4, 4], **kwargs)
-#     model.default_cfg = _cfg_coat()
-#     return model
-
 # ABCNet: Attentive bilateral contextual network for efficient semantic segmentation of Fine-Resolution remotely sensed imagery
 _base_ = [
     '../_base_/models/banet.py',
@@ -56,7 +12,7 @@ data_preprocessor = dict(size=crop_size)
 
 model = dict(
     data_preprocessor=data_preprocessor,
-
+    # pretrained=checkpoint,
     backbone=dict(
         type='CoaT',
         in_channels=3,

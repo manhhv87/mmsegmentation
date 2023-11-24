@@ -12,28 +12,22 @@ data_preprocessor = dict(
 model = dict(
     type='EncoderDecoder',
     data_preprocessor=data_preprocessor,
-    pretrained=None,
-
     backbone=dict(
-        type='ResNetV1c',
-        depth=18,
-        num_stages=4,
-        out_indices=(0, 1, 2, 3),
-        dilations=(1, 1, 1, 1),
-        strides=(1, 2, 2, 2),
-        norm_cfg=norm_cfg,
-        norm_eval=False,
-        style='pytorch',
-        contract_dilation=True),
+        type='CoaT',
+        in_channels=3,
+        patch_size=4, 
+        in_channels=3, 
+        embed_dims=[128, 256, 320, 512],
+        serial_depths=[3, 6, 10, 8], 
+        parallel_depth=0,
+        num_heads=8, 
+        mlp_ratios=[4, 4, 4, 4], 
+        init_cfg=None),
 
     decode_head=dict(
-        type='ABCNet',
-        in_channels=(64, 128, 256, 512),
-        in_index=(0, 1, 2, 3),
-        channels=256,
-        num_classes=10,
-        norm_cfg=norm_cfg,
-        align_corners=False,
+        type='LinearHead',
+        in_channels=512,        
+        num_classes=10,        
         loss_decode=dict(
             type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
 

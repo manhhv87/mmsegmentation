@@ -1,3 +1,4 @@
+import warnings
 import torch
 import torch.nn as nn
 from torch.nn import BatchNorm2d
@@ -318,6 +319,7 @@ class ABCNet(BaseModule):
                  conv_cfg=None,
                  norm_cfg=dict(type='BN', requires_grad=True),
                  act_cfg=dict(type='ReLU'),
+                 pretrained=None,
                  init_cfg=None):
 
         super().__init__(init_cfg=init_cfg)
@@ -326,6 +328,17 @@ class ABCNet(BaseModule):
 
         assert len(context_channels) == 3, 'Length of input channels \
                                            of Context Path must be 3!'
+        assert not (init_cfg and pretrained), \
+            'init_cfg and pretrained cannot be setting at the same time'
+
+        if isinstance(pretrained, str):
+            warnings.warn('DeprecationWarning: pretrained is deprecated, '
+                          'please use "init_cfg" instead')
+            init_cfg = dict(type='Pretrained', checkpoint=pretrained)
+        elif pretrained is None:
+            init_cfg = init_cfg
+        else:
+            raise TypeError('pretrained must be a str or None')
 
         self.out_indices = out_indices
         self.align_corners = align_corners

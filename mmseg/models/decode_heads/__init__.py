@@ -39,6 +39,7 @@ from .unetformer_head import UnetformerHead
 from .floodnet_head import UnetfloodnetHead
 from .general_head import GeneralHead
 from .a2fpn_head import A2FPN
+from .linear_head import LinearHead
 
 __all__ = [
     'FCNHead', 'PSPHead', 'ASPPHead', 'PSAHead', 'NLHead', 'GCHead', 'CCHead',
@@ -49,5 +50,5 @@ __all__ = [
     'SegformerHead', 'ISAHead', 'STDCHead', 'IterativeDecodeHead',
     'KernelUpdateHead', 'KernelUpdator', 'MaskFormerHead', 'Mask2FormerHead',
     'LightHamHead', 'PIDHead', 'DDRHead', 'VPDDepthHead', 'SideAdapterCLIPHead',
-    'UnetformerHead', 'UnetfloodnetHead', 'GeneralHead', 'A2FPN'
+    'UnetformerHead', 'UnetfloodnetHead', 'GeneralHead', 'A2FPN', 'LinearHead'
 ]
