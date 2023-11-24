@@ -330,14 +330,15 @@ class ABCNet(BaseModule):
         self.out_indices = out_indices
         self.align_corners = align_corners
         self.out_channels = out_channels
+        self.conv_cfg = conv_cfg
+        self.norm_cfg = norm_cfg
+        self.act_cfg = act_cfg
+
         self.context_path = ContextPath(
             backbone_cfg, context_channels, self.align_corners)
         self.spatial_path = SpatialPath(in_channels, spatial_channels)
         self.fam = FeatureAggregationModule(
-            context_channels[1], self.out_channels)
-        self.conv_cfg = conv_cfg
-        self.norm_cfg = norm_cfg
-        self.act_cfg = act_cfg
+            context_channels[1], self.out_channels)        
 
     def forward(self, x):
         """Forward function."""
@@ -345,6 +346,7 @@ class ABCNet(BaseModule):
         x_spatial = self.spatial_path(x)
         x_fuse = self.fam(x_spatial, x_context8)
 
-        outs = [x_fuse, x_context8, x_context16]
-        outs = [outs[i] for i in self.out_indices]
-        return tuple(outs)
+        # outs = [x_fuse, x_context8, x_context16]
+        # outs = [outs[i] for i in self.out_indices]
+        # return tuple(outs)
+        return x_fuse

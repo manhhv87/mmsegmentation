@@ -23,14 +23,6 @@ model = dict(
         sr_ratios=[8, 4, 2, 1],
         apply_transform=True),
 
-    # decode_head=dict(
-    #     type='GeneralHead',
-    #     num_classes=10,
-    #     loss_decode=[
-    #         dict(type='CrossEntropyLoss', loss_name='loss_ce',
-    #              use_sigmoid=False, loss_weight=0.3),
-    #         dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)])
-
     decode_head=dict(
         type='FCNHead',
         in_channels=256, 

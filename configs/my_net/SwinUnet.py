@@ -24,7 +24,7 @@ model = dict(
         # init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
         ),
 
-     decode_head=dict(        
+    decode_head=dict(        
         type='GeneralHead',
         in_channels=96,
         channels=96,
