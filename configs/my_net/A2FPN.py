@@ -7,12 +7,12 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-# checkpoint='open-mmlab://resnet18_v1c'
+checkpoint='open-mmlab://resnet18_v1c'
 
 model = dict(
     data_preprocessor=data_preprocessor,
 
-    # backbone=dict(init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
+    backbone=dict(init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
     
     decode_head=dict(
         type='A2FPN',

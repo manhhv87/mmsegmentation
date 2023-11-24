@@ -23,13 +23,20 @@ model = dict(
         init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
     ),
 
+    # decode_head=dict(
+    #     type='GeneralHead',
+    #     num_classes=10,
+    #     loss_decode=[
+    #         dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
+    #         dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]
+    # ),
+    
     decode_head=dict(
-        type='GeneralHead',
+        type='FCNHead',
         num_classes=10,
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
-            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]
-    ),
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)])
 )
 
 # AdamW optimizer, no weight decay for position embedding & layer norm in backbone
