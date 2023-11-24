@@ -1,48 +1,4 @@
-# # CoaT.
-# @register_model
-# def coat_tiny(**kwargs):
-#     model = CoaT(patch_size=4, embed_dims=[152, 152, 152, 152], serial_depths=[2, 2, 2, 2], parallel_depth=6, num_heads=8, mlp_ratios=[4, 4, 4, 4], **kwargs)
-#     model.default_cfg = _cfg_coat()
-#     return model
-
-# @register_model
-# def coat_mini(**kwargs):
-#     model = CoaT(patch_size=4, embed_dims=[152, 216, 216, 216], serial_depths=[2, 2, 2, 2], parallel_depth=6, num_heads=8, mlp_ratios=[4, 4, 4, 4], **kwargs)
-#     model.default_cfg = _cfg_coat()
-#     return model
-
-# @register_model
-# def coat_small(**kwargs):
-#     model = CoaT(patch_size=4, embed_dims=[152, 320, 320, 320], serial_depths=[2, 2, 2, 2], parallel_depth=6, num_heads=8, mlp_ratios=[4, 4, 4, 4], **kwargs)
-#     model.default_cfg = _cfg_coat()
-#     return model
-
-# # CoaT-Lite.
-# @register_model
-# def coat_lite_tiny(**kwargs):
-#     model = CoaT(patch_size=4, embed_dims=[64, 128, 256, 320], serial_depths=[2, 2, 2, 2], parallel_depth=0, num_heads=8, mlp_ratios=[8, 8, 4, 4], **kwargs)
-#     model.default_cfg = _cfg_coat()
-#     return model
-
-# @register_model
-# def coat_lite_mini(**kwargs):
-#     model = CoaT(patch_size=4, embed_dims=[64, 128, 320, 512], serial_depths=[2, 2, 2, 2], parallel_depth=0, num_heads=8, mlp_ratios=[8, 8, 4, 4], **kwargs)
-#     model.default_cfg = _cfg_coat()
-#     return model
-
-# @register_model
-# def coat_lite_small(**kwargs):
-#     model = CoaT(patch_size=4, embed_dims=[64, 128, 320, 512], serial_depths=[3, 4, 6, 3], parallel_depth=0, num_heads=8, mlp_ratios=[8, 8, 4, 4], **kwargs)
-#     model.default_cfg = _cfg_coat()
-#     return model
-
-# @register_model
-# def coat_lite_medium(**kwargs):
-#     model = CoaT(patch_size=4, embed_dims=[128, 256, 320, 512], serial_depths=[3, 6, 10, 8], parallel_depth=0, num_heads=8, mlp_ratios=[4, 4, 4, 4], **kwargs)
-#     model.default_cfg = _cfg_coat()
-#     return model
-
-# ABCNet: Attentive bilateral contextual network for efficient semantic segmentation of Fine-Resolution remotely sensed imagery
+# CoaT: Co-Scale Conv-Attentional Image Transformers
 _base_ = [
     '../_base_/models/banet.py',
     '../_base_/datasets/floodnet.py',
@@ -52,26 +8,26 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-# checkpoint='https://download.openmmlab.com/mmsegmentation/v0.5/bisenetv2/bisenetv2_fcn_4x8_1024x1024_160k_cityscapes/bisenetv2_fcn_4x8_1024x1024_160k_cityscapes_20210903_000032-e1a2eed6.pth'
+checkpoint='https://vcl.ucsd.edu/coat/pretrained/coat_tiny_c6efc33c.pth'
 
 model = dict(
     data_preprocessor=data_preprocessor,
-
+    pretrained=checkpoint,
     backbone=dict(
         type='CoaT',
         in_channels=3,
         patch_size=4, 
         in_channels=3, 
-        embed_dims=[128, 256, 320, 512],
-        serial_depths=[3, 6, 10, 8], 
-        parallel_depth=0,
+        embed_dims=[152, 152, 152, 152],
+        serial_depths=[2, 2, 2, 2], 
+        parallel_depth=6,
         num_heads=8, 
         mlp_ratios=[4, 4, 4, 4], 
         init_cfg=None),
 
     decode_head=dict(
         type='LinearHead',
-        in_channels=512,        
+        in_channels=152,        
         num_classes=10,       
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
