@@ -655,9 +655,11 @@ class CoaT(BaseModule):
 
     def forward(self, x):
         # Return intermediate features (for down-stream tasks).
-        if self.return_interm_layers:
-            return self.forward_features(x)
-        else:                               # Return features for classification.
+        # if self.return_interm_layers:
+            # return self.forward_features(x)
+        # else:                               # Return features for classification.
             # x = self.forward_features(x)
             # x = self.head(x)
-            return self.forward_features(x)
+            # return self.forward_features(x)
+        output = self.forward_features(x)
+        return output
