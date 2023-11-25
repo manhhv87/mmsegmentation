@@ -21,7 +21,7 @@ model = dict(
         depths=(2, 2, 18, 2),
         num_heads=(4, 8, 16, 32),
         window_size=8,
-        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
+        init_cfg=dict(_delete_=True, type='Pretrained', checkpoint=checkpoint)),
 
 decode_head=dict(
         type='myFCNHead',

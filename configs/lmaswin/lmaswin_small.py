@@ -7,7 +7,7 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint='https://objects.githubusercontent.com/github-production-release-asset-2e65be/382210636/5340f4a2-6c80-4db6-afaf-78752ba23224?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20231119%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20231119T054251Z&X-Amz-Expires=300&X-Amz-Signature=d177c3c7c61341b5f13138eaa5d357fb8e6ecdcfb02ea0ef8e8f44d921c5e194&X-Amz-SignedHeaders=host&actor_id=67886698&key_id=0&repo_id=382210636&response-content-disposition=attachment%3B%20filename%3Dcswin_small_224.pth&response-content-type=application%2Foctet-stream'
+checkpoint='https://drive.usercontent.google.com/download?id=10cFEMpAAmvLJXRZ6ktl_UJClVYOUb1_2&export=download&authuser=0&confirm=t&uuid=ae22130a-c843-426d-abc7-972337b76336&at=APZUnTWEpKsY6EWEIM6Ghm8RczHu:1700898129102'
 
 model = dict(
     data_preprocessor=data_preprocessor,
@@ -21,7 +21,7 @@ model = dict(
         depths=(2, 2, 18, 2),
         num_heads=(3, 6, 12, 24),
         window_size=8,
-        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
+        init_cfg=dict(_delete_=True, type='Pretrained', checkpoint=checkpoint)),
 
 decode_head=dict(
         type='myFCNHead',
