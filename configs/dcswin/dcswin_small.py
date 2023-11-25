@@ -23,7 +23,7 @@ model = dict(
     ),
     
     decode_head=dict(
-        type='mFCNHead',
+        type='myFCNHead',
         in_channels=96,
         channels=96,
         num_classes=10,
