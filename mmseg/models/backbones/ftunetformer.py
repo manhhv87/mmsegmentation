@@ -962,7 +962,7 @@ class Decoder(nn.Module):
 class FTUNetFormer(BaseModule):
     def __init__(self,
                  # encoder_channels = [embed_dim, embed_dim*2, embed_dim*4, embed_dim*8]
-                 encoder_channels=[96, 192, 384, 768],
+                 encoder_channels=(96, 192, 384, 768),
                  decode_channels=256,
                  dropout=0.2,
                  embed_dim=96,
