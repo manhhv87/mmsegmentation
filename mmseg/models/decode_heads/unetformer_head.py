@@ -442,7 +442,7 @@ class UnetformerHead(BaseDecodeHead):
     def __init__(self, window_size=8, **kwargs):
         super(UnetformerHead, self).__init__(
             input_transform='multiple_select', **kwargs)
-
+    
         encoder_channels = self.in_channels
         decode_channels = self.channels
         dropout = self.dropout_ratio
