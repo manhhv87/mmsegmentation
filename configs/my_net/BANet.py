@@ -24,7 +24,7 @@ model = dict(
         apply_transform=True),
 
     decode_head=dict(
-        type='FCNHead',
+        type='myFCNHead',
         in_channels=256, 
         channels=256, 
         num_classes=10,

@@ -8,7 +8,7 @@ from .decode_head import BaseDecodeHead
 
 
 @MODELS.register_module()
-class FCNHead(BaseDecodeHead):
+class myFCNHead(BaseDecodeHead):
     """Fully Convolution Networks for Semantic Segmentation.
 
     This head is implemented of `FCNNet <https://arxiv.org/abs/1411.4038>`_.
@@ -72,6 +72,8 @@ class FCNHead(BaseDecodeHead):
                 norm_cfg=self.norm_cfg,
                 act_cfg=self.act_cfg)
 
+        self.m = nn.UpsamplingBilinear2d(scale_factor=4)
+
     def _forward_feature(self, inputs):
         """Forward function for feature maps before classifying each pixel with
         ``self.cls_seg`` fc.
@@ -83,8 +85,14 @@ class FCNHead(BaseDecodeHead):
             feats (Tensor): A tensor of shape (batch_size, self.channels,
                 H, W) which is feature map for last layer of decoder head.
         """
-        x = self._transform_inputs(inputs)
-        feats = self.convs(x)
+        # x = self._transform_inputs(inputs)
+        # feats = self.convs(x)
+        if len(inputs) == 3:
+            feats = self.convs(inputs)
+        else:
+            if isinstance(inputs, tuple):
+                inputs = self._transform_inputs(inputs)
+            feats = self.convs(inputs)
         
         if self.concat_input:
             feats = self.conv_cat(torch.cat([inputs, feats], dim=1))
@@ -94,4 +102,5 @@ class FCNHead(BaseDecodeHead):
         """Forward function."""
         output = self._forward_feature(inputs)
         output = self.cls_seg(output)
+        self.m(output)
         return output

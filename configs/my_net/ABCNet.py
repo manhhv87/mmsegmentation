@@ -25,7 +25,7 @@ model = dict(
             init_cfg=dict(type='Pretrained', checkpoint=checkpoint))),
 
     decode_head=dict(
-        type='FCNHead',
+        type='myFCNHead',
         in_channels=256, 
         channels=256, 
         num_classes=10,

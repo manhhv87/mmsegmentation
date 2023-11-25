@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import torch.utils.checkpoint as cp
 import numpy as np
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
+from collections import OrderedDict
 
 from mmengine.runner import CheckpointLoader
 from mmengine.logging import print_log
@@ -592,18 +593,15 @@ class SwinTransformer(nn.Module):
         if self.ape:
             pretrain_img_size = to_2tuple(pretrain_img_size)
             patch_size = to_2tuple(patch_size)
-            patches_resolution = [
-                pretrain_img_size[0] // patch_size[0], pretrain_img_size[1] // patch_size[1]]
+            patches_resolution = [pretrain_img_size[0] // patch_size[0], pretrain_img_size[1] // patch_size[1]]
 
-            self.absolute_pos_embed = nn.Parameter(torch.zeros(
-                1, embed_dim, patches_resolution[0], patches_resolution[1]))
+            self.absolute_pos_embed = nn.Parameter(torch.zeros(1, embed_dim, patches_resolution[0], patches_resolution[1]))
             trunc_normal_(self.absolute_pos_embed, std=.02)
 
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         # stochastic depth
-        dpr = [x.item() for x in torch.linspace(0, drop_path_rate,
-                                                sum(depths))]  # stochastic depth decay rule
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
 
         # build layers
         self.layers = nn.ModuleList()
@@ -620,13 +618,11 @@ class SwinTransformer(nn.Module):
                 attn_drop=attn_drop_rate,
                 drop_path=dpr[sum(depths[:i_layer]):sum(depths[:i_layer + 1])],
                 norm_layer=norm_layer,
-                downsample=PatchMerging if (
-                    i_layer < self.num_layers - 1) else None,
+                downsample=PatchMerging if (i_layer < self.num_layers - 1) else None,
                 use_checkpoint=use_checkpoint)
             self.layers.append(layer)
 
-        num_features = [int(embed_dim * 2 ** i)
-                        for i in range(self.num_layers)]
+        num_features = [int(embed_dim * 2 ** i) for i in range(self.num_layers)]
         self.num_features = num_features
         self.apply(self._init_weights)
 
@@ -655,64 +651,14 @@ class SwinTransformer(nn.Module):
                 for param in m.parameters():
                     param.requires_grad = False
 
-    # def _init_weights(self, m):
-    #     if isinstance(m, nn.Linear):
-    #         trunc_normal_(m.weight, std=.02)
-    #         if isinstance(m, nn.Linear) and m.bias is not None:
-    #             nn.init.constant_(m.bias, 0)
-    #     elif isinstance(m, nn.LayerNorm):
-    #         nn.init.constant_(m.bias, 0)
-    #         nn.init.constant_(m.weight, 1.0)
-    def init_weights(self, pretrained=None):
-        """Initialize the weights in backbone.
-
-        Args:
-            pretrained (str, optional): Path to pre-trained weights.
-                Defaults to None.
-        """
-
-        def _init_weights(m):
-            if isinstance(m, nn.Linear):
-                trunc_normal_(m.weight, std=.02)
-                if isinstance(m, nn.Linear) and m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.LayerNorm):
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
                 nn.init.constant_(m.bias, 0)
-                nn.init.constant_(m.weight, 1.0)
-
-        if self.init_cfg is None:
-            print_log(f'No pre-trained weights for '
-                      f'{self.__class__.__name__}, '
-                      f'training start from scratch')
-            self.apply(_init_weights)
-
-        else:
-            assert 'checkpoint' in self.init_cfg, f'Only support ' \
-                                                  f'specify `Pretrained` in ' \
-                                                  f'`init_cfg` in ' \
-                                                  f'{self.__class__.__name__} '
-            ckpt = CheckpointLoader.load_checkpoint(
-                self.init_cfg['checkpoint'], logger=None, map_location='cpu')
-            if 'state_dict' in ckpt:
-                _state_dict = ckpt['state_dict']
-            elif 'model' in ckpt:
-                _state_dict = ckpt['model']
-            else:
-                _state_dict = ckpt
-
-            state_dict = OrderedDict()
-            for k, v in _state_dict.items():
-                if k.startswith('backbone.'):
-                    state_dict[k[9:]] = v
-                else:
-                    state_dict[k] = v
-
-            # strip prefix of state_dict
-            if list(state_dict.keys())[0].startswith('module.'):
-                state_dict = {k[7:]: v for k, v in state_dict.items()}
-
-             # load state_dict
-            self.load_state_dict(state_dict, strict=False)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
 
     def forward(self, x):
         """Forward function."""
@@ -722,8 +668,7 @@ class SwinTransformer(nn.Module):
         Wh, Ww = x.size(2), x.size(3)
         if self.ape:
             # interpolate the position embedding to the corresponding size
-            absolute_pos_embed = F.interpolate(
-                self.absolute_pos_embed, size=(Wh, Ww), mode='bicubic')
+            absolute_pos_embed = F.interpolate(self.absolute_pos_embed, size=(Wh, Ww), mode='bicubic')
             x = (x + absolute_pos_embed).flatten(2).transpose(1, 2)  # B Wh*Ww C
         else:
             x = x.flatten(2).transpose(1, 2)
@@ -738,8 +683,7 @@ class SwinTransformer(nn.Module):
                 norm_layer = getattr(self, f'norm{i}')
                 x_out = norm_layer(x_out)
 
-                out = x_out.view(-1, H, W,
-                                 self.num_features[i]).permute(0, 3, 1, 2).contiguous()
+                out = x_out.view(-1, H, W, self.num_features[i]).permute(0, 3, 1, 2).contiguous()
                 outs.append(out)
                 # print('layer{} out size {}'.format(i, out.size()))
 
@@ -923,6 +867,8 @@ class Decoder(nn.Module):
 
 @MODELS.register_module()
 class DCSwin(BaseModule):
+    """DCSwin backbone."""
+
     def __init__(self,
                  encoder_channels=(96, 192, 384, 768),
                  dropout=0.05,
@@ -933,27 +879,70 @@ class DCSwin(BaseModule):
                  frozen_stages=2,
                  pretrained=None,
                  init_cfg=None):
-        super(self).__init__(init_cfg)
+        super().__init__(init_cfg)
+        
+        self.pretrained = pretrained
 
         assert not (init_cfg and pretrained), \
             'init_cfg and pretrained cannot be setting at the same time'
-
+        
         if isinstance(pretrained, str):
-            warnings.warn('DeprecationWarning: pretrained is deprecated, '
+            warnings.warn('DeprecationWarning: pretrained is a deprecated, '
                           'please use "init_cfg" instead')
-            init_cfg = dict(type='Pretrained', checkpoint=pretrained)
+            self.init_cfg = dict(type='Pretrained', checkpoint=pretrained)
         elif pretrained is None:
             init_cfg = init_cfg
         else:
             raise TypeError('pretrained must be a str or None')
 
-        self.pretrained = pretrained
-
         self.backbone = SwinTransformer(
             embed_dim=embed_dim, depths=depths, num_heads=num_heads, frozen_stages=frozen_stages)
         self.decoder = Decoder(encoder_channels, dropout, atrous_rates)
+        self.init_weight()
 
     def forward(self, x):
         x1, x2, x3, x4 = self.backbone(x)
         x = self.decoder(x1, x2, x3, x4)
         return x
+    
+    def init_weight(self):
+        def _init_weights(m):
+            for ly in self.children():
+                if isinstance(ly, nn.Conv2d):
+                    nn.init.kaiming_normal_(ly.weight, a=1)
+                    if not ly.bias is None:
+                        nn.init.constant_(ly.bias, 0)
+
+        if self.init_cfg is None:
+            print_log(f'No pre-trained weights for '
+                      f'{self.__class__.__name__}, '
+                      f'training start from scratch')
+            self.apply(_init_weights)
+        else:
+            assert 'checkpoint' in self.init_cfg, f'Only support ' \
+                                                  f'specify `Pretrained` in ' \
+                                                  f'`init_cfg` in ' \
+                                                  f'{self.__class__.__name__} '
+            ckpt = CheckpointLoader.load_checkpoint(
+                self.init_cfg['checkpoint'], logger=None, map_location='cpu')
+            if 'state_dict' in ckpt:
+                _state_dict = ckpt['state_dict']
+            elif 'model' in ckpt:
+                _state_dict = ckpt['model']
+            else:
+                _state_dict = ckpt
+
+            state_dict = OrderedDict()
+            for k, v in _state_dict.items():
+                if k.startswith('backbone.'):
+                    state_dict[k[9:]] = v
+                else:
+                    state_dict[k] = v
+
+            # strip prefix of state_dict
+            if list(state_dict.keys())[0].startswith('module.'):
+                state_dict = {k[7:]: v for k, v in state_dict.items()}
+
+             # load state_dict
+            self.load_state_dict(state_dict, strict=False)
+    

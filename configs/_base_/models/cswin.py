@@ -28,17 +28,8 @@ model = dict(
         attn_drop_rate=0.,
         drop_path_rate=0.1),        
 
-    # decode_head=dict(
-    #     type='GeneralHead',
-    #     in_channels=512,
-    #     channels=512,
-    #     dropout_ratio=0,
-    #     num_classes=19,
-    #     loss_decode=dict(
-    #         type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
-
     decode_head=dict(
-        type='FCNHead',
+        type='myFCNHead',
         in_channels=512,
         in_index=0,
         channels=512,
