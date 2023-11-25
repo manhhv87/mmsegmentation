@@ -23,9 +23,9 @@ model = dict(
 
     decode_head=dict(
         type='ClsHead',
-        in_channels=96,
+        in_channels=256,
         in_index=0,
-        channels=96,
+        channels=256,
         num_classes=10,
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
