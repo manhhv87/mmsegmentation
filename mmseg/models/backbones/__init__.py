@@ -32,7 +32,7 @@ from .banet import BANet
 from .abcnet import ABCNet
 from .rest_v2 import ResTV2
 from .dcswin import DCSwin
-from .ftuetformer import FTUNetFormer
+from .ftunetformer import FTUNetFormer
 
 __all__ = [
     'ResNet', 'ResNetV1c', 'ResNetV1d', 'ResNeXt', 'HRNet', 'FastSCNN',
