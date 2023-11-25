@@ -1,5 +1,5 @@
 _base_ = [
-    '../_base_/models/ftunetformer.py',
+    '../_base_/models/lmaswin.py',
     '../_base_/datasets/floodnet.py',
     '../_base_/default_runtime.py',
     '../_base_/schedules/schedule_80k.py'
@@ -7,41 +7,41 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint='https://drive.usercontent.google.com/download?id=1jGgAbi15WLFUCRKNT0iBJjhIjeBTNAic&export=download&authuser=0&confirm=t&uuid=5fbbf2e9-09e7-4c87-8d96-e2d94f39eb8d&at=APZUnTUwJEHXVgEGYuOot4Lco-tO:1700896660304'
+checkpoint='https://objects.githubusercontent.com/github-production-release-asset-2e65be/382210636/5340f4a2-6c80-4db6-afaf-78752ba23224?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20231119%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20231119T054251Z&X-Amz-Expires=300&X-Amz-Signature=d177c3c7c61341b5f13138eaa5d357fb8e6ecdcfb02ea0ef8e8f44d921c5e194&X-Amz-SignedHeaders=host&actor_id=67886698&key_id=0&repo_id=382210636&response-content-disposition=attachment%3B%20filename%3Dcswin_small_224.pth&response-content-type=application%2Foctet-stream'
 
 model = dict(
     data_preprocessor=data_preprocessor,
+
     backbone=dict(
-        type='FTUNetFormer',
+        type='LMASwin',
         encoder_channels=(96, 192, 384, 768),
-        decode_channels=256,
+        patch_size=2,
+        atrous_rates=(6, 12),
         embed_dim=96,
-        depths=(2, 2, 6, 2),
+        depths=(2, 2, 18, 2),
         num_heads=(3, 6, 12, 24),
         window_size=8,
         init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
 
-    decode_head=dict(
-        type='ClsHead',
+decode_head=dict(
+        type='myFCNHead',
         in_channels=96,
-        in_index=0,
         channels=96,
         num_classes=10,
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
-            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]))
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)])
+)
 
+# AdamW optimizer, no weight decay for position embedding & layer norm in backbone
 optim_wrapper = dict(
     _delete_=True,
     type='OptimWrapper',
     optimizer=dict(
         type='AdamW', lr=0.00006, betas=(0.9, 0.999), weight_decay=0.01),
-    paramwise_cfg=dict(
-        custom_keys={
-            'pos_block': dict(decay_mult=0.),
-            'norm': dict(decay_mult=0.),
-            'head': dict(lr_mult=10.)
-        }))
+    paramwise_cfg=dict(custom_keys={'absolute_pos_embed': dict(decay_mult=0.),
+                                    'relative_position_bias_table': dict(decay_mult=0.),
+                                    'norm': dict(decay_mult=0.)}))
 
 param_scheduler = [
     dict(

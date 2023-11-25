@@ -15,10 +15,12 @@ model = dict(
     backbone=dict(
         type='LMASwin',
         encoder_channels=(96, 192, 384, 768),
+        patch_size=2,
         atrous_rates=(6, 12),
         embed_dim=96,
         depths=(2, 2, 18, 2),
-        num_heads=(3, 6, 12, 24)),
+        num_heads=(3, 6, 12, 24),
+        window_size=8),
 
     decode_head=dict(
         type='ClsHead',
