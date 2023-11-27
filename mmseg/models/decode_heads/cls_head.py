@@ -1,5 +1,6 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import torch.nn as nn
+import torch.nn.functional as F
 
 from .decode_head import BaseDecodeHead
 from mmseg.registry import MODELS
@@ -9,10 +10,11 @@ from mmseg.registry import MODELS
 class ClsHead(BaseDecodeHead):
     def __init__(self, **kwargs):
         super(ClsHead, self).__init__(**kwargs)
-        # self.m = nn.UpsamplingBilinear2d(scale_factor=4)
 
-    def forward(self, inputs):
-        """Forward function."""
+    def forward(self, inputs):        
+        """Forward function."""        
+        h, w = inputs.size()[-2:]   
+
         output = self.cls_seg(inputs)
-        # self.m(output)
+        output = F.interpolate(output, size=(h, w), mode='bilinear', align_corners=False)   
         return output

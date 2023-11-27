@@ -935,7 +935,7 @@ class Decoder(nn.Module):
             decode_channels, decode_channels), nn.Dropout2d(p=dropout, inplace=True))
         self.init_weight()
 
-    def forward(self, res1, res2, res3, res4, h, w):
+    def forward(self, res1, res2, res3, res4):
         x = self.b4(self.pre_conv(res4))
         x = self.p3(x, res3)
 
@@ -946,8 +946,6 @@ class Decoder(nn.Module):
         x = self.p1(x, res1)
 
         x = self.segmentation_head(x)
-        x = F.interpolate(x, size=(h, w), mode='bilinear', align_corners=False)
-
         return x
 
     def init_weight(self):
@@ -994,10 +992,9 @@ class FTUNetFormer(BaseModule):
             encoder_channels, decode_channels, dropout, window_size)
         self.init_weight()
 
-    def forward(self, x):
-        h, w = x.size()[-2:]
+    def forward(self, x):        
         res1, res2, res3, res4 = self.backbone(x)
-        x = self.decoder(res1, res2, res3, res4, h, w)
+        x = self.decoder(res1, res2, res3, res4)
         return x
 
     def init_weight(self):
