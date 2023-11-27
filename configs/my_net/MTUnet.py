@@ -7,20 +7,20 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint='https://doc-14-64-docs.googleusercontent.com/docs/securesc/tvoi3fua39rd37j1lobniftt2hb7dg0u/irkdqpi02npaso160pflk4unj2snlbrt/1701100275000/15959628209787595289/09412009828125765653/1frQAK05UtiAO8rvKG9y5GXABaH70_-Hu?e=download&ax=AEqgLxm9aogiP4YwsRD_QmTclJ8tNOG2NhSiG3zOooRpzkELLlCiJltEixjRAvIxhT-apgyYfRtBraYw-95HPq2yRlMQSCX-1Y2oowCKXObg5cRKG0rhOobZ0e229BFUMJtMlsWLVB5LAgq8xhOJT5kuhvETnVcjyy3fgTZntf5bS2VsHKJ5O7O3zUf-VedeFNrVOtm8NxKOn8ndHvHgBvUrxrqS66DMC0tbFXKKHRAMn_owSlqR3w72wqUalA_MyqXbuS7NZLberk3eOUtmJtvlbo_ypZ7GYQVI0WMhIfL9GniEFYeW1ujnmYBqRiUfzm_S1HqhHmlPVG4v9Fwy_isJ3t1TFUygEOITXt9P3JqM4ZNvUL34f8Te38pWz_t5fgBWh3DGkSDZK0KhNndzPbAmiW64i6IxV52o_9Wy3B7PZUyM9ZZQBi5r-OyCHmY5ft8LeCA8A8Zl7tWq4-nK6bW11rH86lse1xBklYKVZHjJL9oWAt41dZrPDrnLl1bu6xkM5lFS1g3IIWJxp4i3fDViI4sfN2PfUFxIMwzuR3ldSZVapFyPKYLHHIqiyBdylR4oDk8xStfC53ic7Qm40QYLc6GJU5299DVBTxxd7LJSJjULdWTbiYSNKsKrHMt_zbL0RXxV5OD5Tm6AmMg56wGWkuivfc2u2UHkBkA9Koz2KmiDlZyWZQ7qkQ5nvQ3XyNMKGMvzoMxUd8jTsq86-VMZRsddgHm7xoiFBH3esaVuZdBVPNRkpH6ChmWynyFT8iSkPLK7bgDB2rPJBiFX35XDyt6lAr3CoPAuaM-hTMBVEO2VWs3hmjSjCtx0WFFZ96KfYvAuvP8-xsKGmYemArl2nTFAI1MTqKGQNqz-1eukZLjZfAkEY-q5gF7B7SDUZ8ajbVnQdfnTnnO11eUA0sKUf5tOmgTt9GDBwyZwgensenU-nETGxGeEzMGrfit3ZIoKnM1jL2ivyIk3PuerCMblFljDtlxxXkCu2vJ3JVnE6M-XaasXpDgSRhtea1_6OBU2ltcozuIGSrxpiZhMert6XZEAqy5q5Kk&uuid=186e1afe-d1a1-4ae7-9240-9b189ba67758&authuser=0&nonce=flul6l88gnd9k&user=09412009828125765653&hash=pi01pdrgplmesra376mhp94nuhmn4sfa'
+# checkpoint='https://doc-0k-64-docs.googleusercontent.com/docs/securesc/tvoi3fua39rd37j1lobniftt2hb7dg0u/o62hbc4cq10gvh9p8juso13f908j8e6d/1701101700000/15959628209787595289/09412009828125765653/1eo6d-d_kR0qbHBIHq49TQ1CFpPLypJUT?e=download&ax=AEqgLxlvLbUrD07Hirgw1U5HgSShGQHX-fUSUJFdeRiVA0VsSqSZNeO7kTMwFY1QHPgy1-0y_MV84s_DAXqO_oUsUyxi6n2jAGWC6I3sqvthv4c_kmwb2bxsqwU9sTouXnlEY-tXbq3XIiCmbm7qvQQz57kxTrtFqp_-u_zScYXgeprzFfrBclrKkGM050tVRP7FXqui6a8ov_JKu9D0PfFgxymqcUogjCHsB2HkPH1EiNOrSTgEN9wQYLTLcYaCiCwIVr4UrZxYnbnAiV5UWKOhqHVVilZXAD8yLPLfhGe_vOOb5Zts8xyFMlzZlyoja1fPOvYFMJWlEglE-vpAFB6OgHDegG5WtusNuKDhEJVpS6qIx3Eg1IugCBQwLAru3_UQi-DQlAvCfUWx9H6J0Tq71Ftxv-LAC0SSIruhk4gkFPdIoTbXgow5fueWDVbNBEOFDFXuwPFxXWwvRu9ayuI3o4C0mhfRPmKbV0akLyOlghQ8o96pHR3d0dCOT-8kWURVWUKmpTBpyUkOAPlJTuaGi2J0YyLshHDoKfy4IDeDTf07ZjvGR7KPaCqoAzYF6zSbwGL4rY7YNYgy7ZdTl3KalwBz1I1yeHBK_PsHxDfdb0uUW-GML7k0f5pyEgR8Io3G7H4c1Wstqg8fAg96o8Vykp5laWTVOywS-aWJSLI0v3Q2cDwjbo1-4NrpG_EU5D53HB6yJaEk81m1cmmJjfCfZsy5ulIOap0-LbskzEp6u0OXwh33z_aA6mhDD7zPX-l7ijo4wQjgxifJoRIjKu9r0V0dwUzsMT4AATPcBFclf6G9hiKcEixF0K6GGURDrbaqbM7CjUOm4uUTQCgCyO_uTyakyUniN_zYfniawo88nCZxrOom_ljD-nxxmbcIYyOWnN4WuRMZtBeHu2VPfmG_lfaJzGyvUeDyYtNt7BAtgXpdd5vPLaIjrrSU_Ggd31d73rmy3A-4734NVNuSUJhBUzddnBChSsySbG0C6dPM15HlKJXH2T6BP4iLjX4kHqV5afX5ovEPSPggEi7z3dEWWTczWftLAlE&uuid=7bafc451-882c-40c5-8f9e-cf476f8c5f87&authuser=0&nonce=8ccrem7m24gnq&user=09412009828125765653&hash=0mjur0k2a6qdh95s5mie1aqo1k7fn7tf'
 
 model = dict(
     data_preprocessor=data_preprocessor,
-    pretrained=checkpoint,
 
     backbone=dict(
-        type='MTUNet',
         type='MTUNet',
         encoder=[256, 512],
         decoder=[1024, 512],
         bottleneck=1024,
         num_heads=8,
-        win_size=4),
+        win_size=4,
+        # init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
+    ),
 
     decode_head=dict(
         type='ClsHead',
@@ -30,7 +30,8 @@ model = dict(
         num_classes=10,
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
-            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]),
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]
+    ),
 )
 
 # AdamW optimizer, no weight decay for position embedding & layer norm in backbone

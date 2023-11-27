@@ -377,14 +377,13 @@ class Stem(nn.Module):
         super(Stem, self).__init__()
         self.model = U_encoder()
         self.trans_dim = ConvBNReLU(256, 256, 1, 1, 0)  # out_dim, model_dim
-        self.position_embedding = nn.Parameter(torch.zeros((1, 784, 256)))
+        self.position_embedding = nn.Parameter(torch.zeros((1, 4096, 256)))
 
     def forward(self, x):
-
-        x, features = self.model(x)  # (1, 512, 28, 28)
-        x = self.trans_dim(x)  # (B, C, H, W) (1, 256, 28, 28)
-        x = x.flatten(2)  # (B, H, N)  (1, 256, 28*28)
-        x = x.transpose(-2, -1)  # (B, N, H)
+        x, features = self.model(x)  # [4, 256, 64, 64]
+        x = self.trans_dim(x)  # (B, C, H, W) [4, 256, 64, 64]
+        x = x.flatten(2)  # (B, H, N)  [4, 256, 64*64]
+        x = x.transpose(-2, -1)  # (B, N, H) [4, 4096, 256]
         x = x + self.position_embedding
         return x, features  # (B, N, H)
 
@@ -498,7 +497,7 @@ class MTUNet(BaseModule):
             dim = decoder[i]
             self.decoder.append(decoder_block(dim, False))
 
-        self.decoder.append(decoder_block(decoder[-1], True))    
+        self.decoder.append(decoder_block(decoder[-1], True))
 
     def forward(self, x):
         if x.size()[1] == 1:
@@ -527,7 +526,7 @@ class MTUNet(BaseModule):
         x = self.decoder_stem(x, features)
 
         return x
-    
+
     def init_weights(self, pretrained=None):
         def _init_weights(m):
             if isinstance(m, nn.Linear):
