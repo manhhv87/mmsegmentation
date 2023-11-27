@@ -1,4 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+# Mixed Transformer U-Net For Medical Image Segmentation
 import warnings
 import math
 import numpy as np
@@ -13,6 +14,7 @@ from mmengine.logging import print_log
 from mmengine.model import BaseModule
 
 from mmseg.registry import MODELS
+
 
 class ConvBNReLU(nn.Module):
     def __init__(self, c_in, c_out, kernel_size, stride=1, padding=1, activation=True):
@@ -118,16 +120,12 @@ class MEAttention(nn.Module):
     def forward(self, x):
         B, N, C = x.shape
         x = self.query_liner(x)
-        x = x.view(B, N, self.num_heads, -1).permute(0, 2, 1,
-                                                     3)  # (1, 32, 225, 32)
-
+        x = x.view(B, N, self.num_heads, -1).permute(0,
+                                                     2, 1, 3)  # (1, 32, 225, 32)
         attn = self.linear_0(x)
-
         attn = attn.softmax(dim=-2)
         attn = attn / (1e-9 + attn.sum(dim=-1, keepdim=True))
-
         x = self.linear_1(attn).permute(0, 2, 1, 3).reshape(B, N, -1)
-
         x = self.proj(x)
 
         return x
@@ -463,9 +461,9 @@ class decoder_block(nn.Module):
 class MTUNet(BaseModule):
     def __init__(self,
                  num_heads=8,
-                 win_size=4,        
+                 win_size=4,
                  bottleneck=1024,
-                 encoder=[256, 512],        
+                 encoder=[256, 512],
                  decoder=[1024, 512],
                  pretrained=None,
                  init_cfg=None):
@@ -500,8 +498,36 @@ class MTUNet(BaseModule):
             dim = decoder[i]
             self.decoder.append(decoder_block(dim, False))
 
-        self.decoder.append(decoder_block(decoder[-1], True))
+        self.decoder.append(decoder_block(decoder[-1], True))    
 
+    def forward(self, x):
+        if x.size()[1] == 1:
+            x = x.repeat(1, 3, 1, 1)
+
+        x, features = self.stem(x)  # (B, N, C) (1, 196, 256)
+
+        skips = []
+        for i in range(len(self.encoder)):
+            x, skip = self.encoder[i](x)
+            skips.append(skip)
+            B, C, H, W = x.shape  # (1, 512, 8, 8)
+            x = x.permute(0, 2, 3, 1).contiguous().view(B, -1, C)  # (B, N, C)
+
+        x = self.bottleneck(x)  # (1, 25, 1024)
+        B, N, C = x.shape
+        x = x.view(B, int(np.sqrt(N)), -1, C).permute(0, 3, 1, 2)
+
+        for i in range(len(self.decoder)):
+            x = self.decoder[i](x,
+                                skips[len(self.decoder) - i - 1])  # (B, N, C)
+            B, N, C = x.shape
+            x = x.view(B, int(np.sqrt(N)), int(np.sqrt(N)),
+                       C).permute(0, 3, 1, 2)
+
+        x = self.decoder_stem(x, features)
+
+        return x
+    
     def init_weights(self, pretrained=None):
         def _init_weights(m):
             if isinstance(m, nn.Linear):
@@ -544,26 +570,3 @@ class MTUNet(BaseModule):
 
              # load state_dict
             self.load_state_dict(state_dict, strict=False)
-
-    def forward(self, x):
-        if x.size()[1] == 1:
-            x = x.repeat(1, 3, 1, 1)
-        x, features = self.stem(x)  # (B, N, C) (1, 196, 256)
-        skips = []
-        for i in range(len(self.encoder)):
-            x, skip = self.encoder[i](x)
-            skips.append(skip)
-            B, C, H, W = x.shape  # (1, 512, 8, 8)
-            x = x.permute(0, 2, 3, 1).contiguous().view(B, -1, C)  # (B, N, C)
-        x = self.bottleneck(x)  # (1, 25, 1024)
-        B, N, C = x.shape
-        x = x.view(B, int(np.sqrt(N)), -1, C).permute(0, 3, 1, 2)
-        for i in range(len(self.decoder)):
-            x = self.decoder[i](x,
-                                skips[len(self.decoder) - i - 1])  # (B, N, C)
-            B, N, C = x.shape
-            x = x.view(B, int(np.sqrt(N)), int(np.sqrt(N)),
-                       C).permute(0, 3, 1, 2)
-
-        x = self.decoder_stem(x, features)        
-        return x
