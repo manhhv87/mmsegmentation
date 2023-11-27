@@ -36,6 +36,7 @@ class PAM_Module(Module):
     def forward(self, x):
         # Apply the feature map to the queries and keys
         batch_size, chnnels, height, width = x.shape
+
         Q = self.query_conv(x).view(batch_size, -1, width * height)
         K = self.key_conv(x).view(batch_size, -1, width * height)
         V = self.value_conv(x).view(batch_size, -1, width * height)
@@ -119,9 +120,9 @@ class DecoderBlock(nn.Module):
 
 
 @MODELS.register_module()
-class MANet(BaseDecodeHead):
+class MANET(BaseDecodeHead):
     def __init__(self, **kwargs):
-        super(MANet, self).__init__(
+        super(MANET, self).__init__(
             input_transform='multiple_select', **kwargs)
 
         encoder_channels = self.in_channels
@@ -144,21 +145,17 @@ class MANet(BaseDecodeHead):
 
     def forward(self, x):
         # Encoder
-        inputs = self._transform_inputs(x)
-
-        e4 = self.attention4(inputs[3])
+        e4 = self.attention4(x[3])
 
         # Decoder
-        d4 = self.decoder4(e4) + self.attention3(inputs[2])
-        d3 = self.decoder3(d4) + self.attention2(inputs[1])
-        d2 = self.decoder2(d3) + self.attention1([inputs[0]])
+        d4 = self.decoder4(e4) + self.attention3(x[2])
+        d3 = self.decoder3(d4) + self.attention2(x[1])
+        d2 = self.decoder2(d3) + self.attention1(x[0])
         d1 = self.decoder1(d2)
 
         out = self.finaldeconv1(d1)
         out = self.finalrelu1(out)
         out = self.finalconv2(out)
         out = self.finalrelu2(out)
-
         out = self.cls_seg(out)
-
         return out
