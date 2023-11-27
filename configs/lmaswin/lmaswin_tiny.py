@@ -21,7 +21,7 @@ model = dict(
         depths=(2, 2, 6, 2),
         num_heads=(3, 6, 12, 24),
         window_size=8,
-        init_cfg=dict(_delete_=True, type='Pretrained', checkpoint=checkpoint)),
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
 
 decode_head=dict(
         type='myFCNHead',
@@ -39,9 +39,7 @@ optim_wrapper = dict(
     type='OptimWrapper',
     optimizer=dict(
         type='AdamW', lr=0.00006, betas=(0.9, 0.999), weight_decay=0.01),
-    paramwise_cfg=dict(custom_keys={'absolute_pos_embed': dict(decay_mult=0.),
-                                    'relative_position_bias_table': dict(decay_mult=0.),
-                                    'norm': dict(decay_mult=0.)}))
+    paramwise_cfg=None)
 
 param_scheduler = [
     dict(

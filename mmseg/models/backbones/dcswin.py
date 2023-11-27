@@ -593,15 +593,18 @@ class SwinTransformer(nn.Module):
         if self.ape:
             pretrain_img_size = to_2tuple(pretrain_img_size)
             patch_size = to_2tuple(patch_size)
-            patches_resolution = [pretrain_img_size[0] // patch_size[0], pretrain_img_size[1] // patch_size[1]]
+            patches_resolution = [
+                pretrain_img_size[0] // patch_size[0], pretrain_img_size[1] // patch_size[1]]
 
-            self.absolute_pos_embed = nn.Parameter(torch.zeros(1, embed_dim, patches_resolution[0], patches_resolution[1]))
+            self.absolute_pos_embed = nn.Parameter(torch.zeros(
+                1, embed_dim, patches_resolution[0], patches_resolution[1]))
             trunc_normal_(self.absolute_pos_embed, std=.02)
 
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         # stochastic depth
-        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate,
+                                                sum(depths))]  # stochastic depth decay rule
 
         # build layers
         self.layers = nn.ModuleList()
@@ -618,11 +621,13 @@ class SwinTransformer(nn.Module):
                 attn_drop=attn_drop_rate,
                 drop_path=dpr[sum(depths[:i_layer]):sum(depths[:i_layer + 1])],
                 norm_layer=norm_layer,
-                downsample=PatchMerging if (i_layer < self.num_layers - 1) else None,
+                downsample=PatchMerging if (
+                    i_layer < self.num_layers - 1) else None,
                 use_checkpoint=use_checkpoint)
             self.layers.append(layer)
 
-        num_features = [int(embed_dim * 2 ** i) for i in range(self.num_layers)]
+        num_features = [int(embed_dim * 2 ** i)
+                        for i in range(self.num_layers)]
         self.num_features = num_features
         self.apply(self._init_weights)
 
@@ -668,7 +673,8 @@ class SwinTransformer(nn.Module):
         Wh, Ww = x.size(2), x.size(3)
         if self.ape:
             # interpolate the position embedding to the corresponding size
-            absolute_pos_embed = F.interpolate(self.absolute_pos_embed, size=(Wh, Ww), mode='bicubic')
+            absolute_pos_embed = F.interpolate(
+                self.absolute_pos_embed, size=(Wh, Ww), mode='bicubic')
             x = (x + absolute_pos_embed).flatten(2).transpose(1, 2)  # B Wh*Ww C
         else:
             x = x.flatten(2).transpose(1, 2)
@@ -683,7 +689,8 @@ class SwinTransformer(nn.Module):
                 norm_layer = getattr(self, f'norm{i}')
                 x_out = norm_layer(x_out)
 
-                out = x_out.view(-1, H, W, self.num_features[i]).permute(0, 3, 1, 2).contiguous()
+                out = x_out.view(-1, H, W,
+                                 self.num_features[i]).permute(0, 3, 1, 2).contiguous()
                 outs.append(out)
                 # print('layer{} out size {}'.format(i, out.size()))
 
@@ -843,12 +850,6 @@ class Decoder(nn.Module):
             nn.UpsamplingNearest2d(scale_factor=2)
         )
         self.dropout = nn.Dropout2d(p=dropout, inplace=True)
-
-        # self.segmentation_head = nn.Sequential(
-        #     ConvBNReLU(encoder_channels[0], encoder_channels[0]),
-        #     Conv(encoder_channels[0], num_classes, kernel_size=1),
-        #     nn.UpsamplingBilinear2d(scale_factor=4))
-               
         self.init_weight()
 
     def forward(self, x1, x2, x3, x4):
@@ -880,12 +881,12 @@ class DCSwin(BaseModule):
                  pretrained=None,
                  init_cfg=None):
         super().__init__(init_cfg)
-        
+
         self.pretrained = pretrained
 
         assert not (init_cfg and pretrained), \
             'init_cfg and pretrained cannot be setting at the same time'
-        
+
         if isinstance(pretrained, str):
             warnings.warn('DeprecationWarning: pretrained is a deprecated, '
                           'please use "init_cfg" instead')
@@ -904,7 +905,7 @@ class DCSwin(BaseModule):
         x1, x2, x3, x4 = self.backbone(x)
         x = self.decoder(x1, x2, x3, x4)
         return x
-    
+
     def init_weight(self):
         def _init_weights(m):
             for ly in self.children():
@@ -945,4 +946,3 @@ class DCSwin(BaseModule):
 
              # load state_dict
             self.load_state_dict(state_dict, strict=False)
-    

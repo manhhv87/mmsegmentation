@@ -1,6 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from mmcv.cnn import ConvModule
 
 from mmseg.registry import MODELS
@@ -72,7 +73,7 @@ class myFCNHead(BaseDecodeHead):
                 norm_cfg=self.norm_cfg,
                 act_cfg=self.act_cfg)
 
-        self.m = nn.UpsamplingBilinear2d(scale_factor=4)
+        # self.m = nn.UpsamplingBilinear2d(scale_factor=4)
 
     def _forward_feature(self, inputs):
         """Forward function for feature maps before classifying each pixel with
@@ -93,14 +94,18 @@ class myFCNHead(BaseDecodeHead):
             if isinstance(inputs, tuple):
                 inputs = self._transform_inputs(inputs)
             feats = self.convs(inputs)
-        
+
         if self.concat_input:
             feats = self.conv_cat(torch.cat([inputs, feats], dim=1))
         return feats
 
     def forward(self, inputs):
         """Forward function."""
+        h, w = inputs.size()[-2:]
+
         output = self._forward_feature(inputs)
         output = self.cls_seg(output)
-        self.m(output)
+        output = F.interpolate(output, size=(
+            h, w), mode='bilinear', align_corners=False)
+        # self.m(output)
         return output

@@ -1129,14 +1129,14 @@ class MSRB(nn.Module):
 
 
 class FM(nn.Module):
-    def __init__(self, 
-                 encoder_channels=(96, 192, 384, 768),                  
+    def __init__(self,
+                 encoder_channels=(96, 192, 384, 768),
                  patch_size=2,
                  embed_dim=96,
                  depths=[2, 2, 2],
                  num_heads=[3, 6, 12],
-                 window_size=7, 
-                 atrous_rates=(6, 12), 
+                 window_size=7,
+                 atrous_rates=(6, 12),
                  bias=False):
         super(FM, self).__init__()
 
@@ -1367,31 +1367,22 @@ class CA(nn.Module):
                                   nn.UpsamplingNearest2d(scale_factor=2),
                                   SeparableConvBNReLU(
                                       encoder_channels[-2], encoder_channels[-3], dilation=rate_2),
-                                  nn.UpsamplingNearest2d(scale_factor=2))
+                                  nn.UpsamplingNearest2d(scale_factor=4))
         self.up31 = nn.Sequential(SeparableConvBNReLU(encoder_channels[-2], encoder_channels[-3], dilation=rate_1),
                                   nn.UpsamplingNearest2d(scale_factor=2),
                                   SeparableConvBNReLU(
                                       encoder_channels[-3], encoder_channels[-4], dilation=rate_2),
-                                  nn.UpsamplingNearest2d(scale_factor=2))
+                                  nn.UpsamplingNearest2d(scale_factor=4))
 
         self.down24 = DownConnection(encoder_channels[1], encoder_channels[3])
         self.down13 = DownConnection(encoder_channels[0], encoder_channels[2])
 
     def forward(self, x1, x2, x3, x4, x5, x6, x7, x8):
-
-        # Decoder
-
-        out4 = self.conv_4(x4) + self.down24(x6)  # [4, 768, 32, 32]
-        # print('out4:', out4.shape)#[4, 768, 32, 32]
-        # print('self.conv_3(x3):', self.conv_3(x3).shape)
-
-        out3 = self.conv_3(x3) + self.down13(x5)  # [4, 384, 64, 64]
-        # out3 = self.maxpool(self.maxpool(concat2))
-        out2 = self.conv_2(x2) + self.up42(x8)  # [4, 192, 128, 128]
-        # out2 = self.maxpool(self.maxpool(concat1))
-
-        out1 = self.conv_1(x1) + self.up31(x7)  # [4, 96, 256, 256]
-
+        out4 = self.conv_4(x4) + self.down24(x6)  # [2, 768, 32, 32] 
+        out3 = self.conv_3(x3) + self.down13(x5)  # [2, 384, 64, 64]
+        out2 = self.conv_2(x2) + self.up42(x8)    # [2, 192, 128, 128]
+        out1 = self.conv_1(x1) + self.up31(x7)    # [2, 96, 256, 256]
+        
         return out1, out2, out3, out4
 
 
@@ -1399,8 +1390,7 @@ class Decoder(nn.Module):
     def __init__(self,
                  encoder_channels=(96, 192, 384, 768),
                  dropout=0.05,
-                 atrous_rates=(6, 12),
-                 window_size=8):
+                 atrous_rates=(6, 12)):
         super(Decoder, self).__init__()
 
         self.ca = CA(encoder_channels, atrous_rates)
@@ -1419,19 +1409,14 @@ class Decoder(nn.Module):
         self.dropout = nn.Dropout2d(p=dropout, inplace=True)
 
         self.segmentation_head = nn.Sequential(
-            ConvBNReLU(encoder_channels[0], encoder_channels[0]),
-            # Conv(encoder_channels[0], num_classes, kernel_size=1),
-            # nn.UpsamplingBilinear2d(scale_factor=4))
-        )
+            ConvBNReLU(encoder_channels[0], encoder_channels[0]))
         self.init_weight()
 
     def forward(self, x1, x2, x3, x4, x5, x6, x7, x8):
         out1, out2, out3, out4 = self.ca(x1, x2, x3, x4, x5, x6, x7, x8)
         x = out1 + self.up1(out2) + self.up2(out3) + self.up3(out4)
         x = self.dropout(x)
-        # print('1:', x.shape) #[4,96,256,256]
         x = self.segmentation_head(x)
-        # print('2:', x.shape) #[4,6,1024,1024]
         return x
 
     def init_weight(self):
@@ -1473,27 +1458,25 @@ class LMASwin(BaseModule):
         self.pretrained = pretrained
 
         self.backbone = SwinTransformer(patch_size=patch_size,
-                                        embed_dim=embed_dim, 
-                                        depths=depths, 
-                                        num_heads=num_heads, 
-                                        window_size=window_size, 
+                                        embed_dim=embed_dim,
+                                        depths=depths,
+                                        num_heads=num_heads,
+                                        window_size=window_size,
                                         frozen_stages=frozen_stages)
-        self.supencoder = FM(encoder_channels=encoder_channels, 
-                             patch_size=patch_size, 
+        self.supencoder = FM(encoder_channels=encoder_channels,
+                             patch_size=patch_size,
                              embed_dim=embed_dim,
-                             depths=depths, 
-                             num_heads=num_heads,                             
+                             depths=depths,
+                             num_heads=num_heads,
                              window_size=window_size,
-                             atrous_rates=atrous_rates, 
+                             atrous_rates=atrous_rates,
                              bias=False)
-        self.decoder = Decoder(encoder_channels=encoder_channels, 
-                               dropout=dropout, 
+        self.decoder = Decoder(encoder_channels=encoder_channels,
+                               dropout=dropout,
                                atrous_rates=atrous_rates)
 
     def forward(self, x):
-        # print('in:', x.shape) #[4,3,1024,1024]
         x1, x2, x3, x4 = self.backbone(x)
         x5, x6, x7, x8 = self.supencoder(x)
-        x = self.decoder(x1, x2, x3, x4, x5, x6, x7, x8)
-        # print('out:',x.shape) #[4,6,1024,1024]
+        x = self.decoder(x1, x2, x3, x4, x5, x6, x7, x8)    # [2, 96, 256, 256]
         return x
