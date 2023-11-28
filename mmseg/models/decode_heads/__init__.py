@@ -42,7 +42,6 @@ from .a2fpn_head import A2FPN
 from .my_fcn_head import myFCNHead
 from .cls_head import ClsHead
 from .manet_head import MANET
-from .dbunet_head import DBUNet
 
 __all__ = [
     'FCNHead', 'PSPHead', 'ASPPHead', 'PSAHead', 'NLHead', 'GCHead', 'CCHead',
@@ -54,5 +53,5 @@ __all__ = [
     'KernelUpdateHead', 'KernelUpdator', 'MaskFormerHead', 'Mask2FormerHead',
     'LightHamHead', 'PIDHead', 'DDRHead', 'VPDDepthHead', 'SideAdapterCLIPHead',
     'UnetformerHead', 'UnetfloodnetHead', 'GeneralHead', 'A2FPN', 'myFCNHead',
-    'ClsHead', 'MANET', 'DBUNet'
+    'ClsHead', 'MANET'
 ]
