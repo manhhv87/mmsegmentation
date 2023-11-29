@@ -1,3 +1,4 @@
+# Fully Transformer-based network
 _base_ = [
     '../_base_/models/ftunetformer.py',
     '../_base_/datasets/floodnet.py',

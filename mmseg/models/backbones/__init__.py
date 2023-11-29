@@ -34,6 +34,7 @@ from .rest_v2 import ResTV2
 from .dcswin import DCSwin
 from .ftunetformer import FTUNetFormer
 from .lmaswin import LMASwin
+from .dbunet import DBUNet
 
 __all__ = [
     'ResNet', 'ResNetV1c', 'ResNetV1d', 'ResNeXt', 'HRNet', 'FastSCNN',
@@ -42,5 +43,5 @@ __all__ = [
     'BiSeNetV1', 'BiSeNetV2', 'ICNet', 'TIMMBackbone', 'ERFNet', 'PCPVT',
     'SVT', 'STDCNet', 'STDCContextPathNet', 'BEiT', 'MAE', 'PIDNet', 'MSCAN',
     'DDRNet', 'VPD', 'CSWin', 'MTUNet', 'SwinUnet', 'SmaAt_UNet', 'BANet', 'ABCNet',
-    'ResTV2', 'DCSwin', 'FTUNetFormer', 'LMASwin'
+    'ResTV2', 'DCSwin', 'FTUNetFormer', 'LMASwin', 'DBUNet'
 ]

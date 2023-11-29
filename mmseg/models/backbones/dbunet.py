@@ -1,11 +1,11 @@
 import warnings
 import torch
 import torch.nn as nn
-import torchvision.transforms.functional as TF
+# import torchvision.transforms.functional as TF
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 
-from mmcv.cnn import ConvModule
+# from mmcv.cnn import ConvModule
 
 from mmengine.model import BaseModule
 from mmseg.registry import MODELS
@@ -113,10 +113,10 @@ class Transformer(nn.Module):
             # Assign value to the newly created tensor x_AfterConv.shape=[1, 1, 64, 196]
             x_AfterConv[0][0][i][:] = x_patch_i[0][0][0][:]
         a = x_AfterConv.view(1, 64, 1, 196)
-        a = a.to(DEVICE)
+        # a = a.to(DEVICE)
         # avgpool, compresses a tensor of size [1, 64]
         b1 = nn.AdaptiveAvgPool2d(1)(a).view(1, 64)
-        b1 = b1.to(DEVICE)
+        # b1 = b1.to(DEVICE)
 
         val, idx = torch.sort(b1)  # Sort in ascending order
         # If all values are < 0, or all values are > 0,
@@ -247,7 +247,7 @@ class TransEncoder(nn.Module):
     def __init__(self, 
                  image_size=224, 
                  in_channels=3, 
-                 patch_size=28, 
+                 patch_size=16, 
                  dim=96, 
                  depth=6, 
                  heads=16, 
@@ -322,7 +322,7 @@ class DBUNet(BaseModule):
                  backbone_cfg,
                  img_size=224,
                  in_channels=3,
-                 patch_size=28,
+                 patch_size=16,
                  dim=196,
                  depth=6,
                  heads=16,

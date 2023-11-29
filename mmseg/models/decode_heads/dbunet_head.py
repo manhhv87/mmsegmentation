@@ -322,7 +322,7 @@ class DBUNetHead(BaseDecodeHead):
         # self.encoder = encoder(image_size=224, patch_size=28,
         #                        dim=196, depth=6, heads=16, mlp_dim=2048)
 
-        self.conv = nn.Conv2d(1024, 512, 1)
+        # self.conv = nn.Conv2d(1024, 512, 1)
         self.bottleneck = Bottleneck(512, 1024)
         self.ups = nn.ModuleList()
         for feature in reversed(features):
@@ -356,28 +356,30 @@ class DBUNetHead(BaseDecodeHead):
         # e3 = self.encoder3(inputs[2])
         # e4 = self.encoder4(inputs[3])
 
-        vit_layerInfo = self.encoder(x)
+        res, vit_layerInfo = x
 
-        x = self.bottleneck(inputs[3])
+        # vit_layerInfo = self.encoder(x)
+
+        x = self.bottleneck(res[3])
 
         # Flip to positive order. 0 means the fourth layer...3 means the first layer
         vit_layerInfo = vit_layerInfo[::-1]
 
         v = vit_layerInfo[0].view(4, 65, 14, 14)
-        x = torch.cat([x, inputs[3], v], dim=1)
+        x = torch.cat([x, res[3], v], dim=1)
         x = self.ups[0](x)
         x = self.ups[1](x)
 
         v = vit_layerInfo[1].view(4, 65, 14, 14)
         v = self.vitLayer_UpConv(v)
-        x = torch.cat([x, inputs[2], v], dim=1)
+        x = torch.cat([x, res[2], v], dim=1)
         x = self.ups[2](x)
         x = self.ups[3](x)
 
         v = vit_layerInfo[2].view(4, 65, 14, 14)
         v = self.vitLayer_UpConv(v)
         v = self.vitLayer_UpConv(v)
-        x = torch.cat([x, inputs[1], v], dim=1)
+        x = torch.cat([x, res[1], v], dim=1)
         x = self.ups[4](x)
         x = self.ups[5](x)
 
@@ -385,7 +387,7 @@ class DBUNetHead(BaseDecodeHead):
         v = self.vitLayer_UpConv(v)
         v = self.vitLayer_UpConv(v)
         v = self.vitLayer_UpConv(v)
-        x = torch.cat([x, inputs[0], v], dim=1)
+        x = torch.cat([x, res[0], v], dim=1)
         x = self.ups[6](x)
         x = self.ups[7](x)
 

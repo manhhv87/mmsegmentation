@@ -1,4 +1,5 @@
 
+# Fully Transformer-based network
 import warnings
 import torch
 import torch.nn as nn

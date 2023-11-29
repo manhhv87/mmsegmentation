@@ -15,7 +15,7 @@ model = dict(
     backbone=dict(init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
     
     decode_head=dict(
-        type='DBUNet',
+        type='DBUNetHead',
         channels=32,   # input channel of x = self.cls_seg(x)
         num_classes=10,
         loss_decode=[
