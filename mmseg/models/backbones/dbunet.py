@@ -245,7 +245,7 @@ class TransEncoder(nn.Module):
     def __init__(self,
                  image_size=224,
                  in_channels=3,
-                 patch_size=28,
+                 patch_size=128,
                  dim=196,
                  heads=16,          # 224/28 + 224/28
                  mlp_dim=2048,
@@ -318,7 +318,7 @@ class DBUNet(BaseModule):
                  backbone_cfg,
                  img_size=224,
                  in_channels=3,
-                 patch_size=28,
+                 patch_size=128,
                  dim=196,
                  depth=6,
                  heads=16,
@@ -345,7 +345,7 @@ class DBUNet(BaseModule):
         self.backbone = MODELS.build(backbone_cfg)
 
         self.transencoder = TransEncoder(image_size=img_size, patch_size=patch_size, dim=dim,
-                                         depth=depth, heads=heads, mlp_dim=mlp_dim, in_channels=in_channels,
+                                         heads=heads, mlp_dim=mlp_dim, in_channels=in_channels,
                                          dim_head=dim_head, dropout=dropout, emb_dropout=emb_dropout)
 
     def forward(self, x):
