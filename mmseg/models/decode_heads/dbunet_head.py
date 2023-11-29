@@ -157,7 +157,6 @@ class Transformer(nn.Module):
 
 # FFB module
 class Bottleneck(nn.Module):
-
     def __init__(self, inplanes, planes, stride=1):
         super(Bottleneck, self).__init__()
 
@@ -226,64 +225,6 @@ class Bottleneck(nn.Module):
         return out
 
 
-class encoder(nn.Module):
-    def __init__(self, *, image_size, patch_size, dim, depth, heads, mlp_dim, pool='cls', channels=3, dim_head=64, dropout=0., emb_dropout=0.):
-        super().__init__()
-        image_height, image_width = pair(image_size)
-        patch_height, patch_width = pair(patch_size)
-
-        assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
-
-        num_patches = (image_height // patch_height) * \
-            (image_width // patch_width)
-        patch_dim = channels * patch_height * patch_width
-        assert pool in {
-            'cls', 'mean'}, 'pool type must be either cls (cls token) or mean (mean pooling)'
-
-        self.to_patch_embedding = nn.Sequential(
-            Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)',
-                      p1=patch_height, p2=patch_width),
-            nn.Linear(patch_dim, dim),
-        )
-
-        self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim))
-        self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
-        self.dropout = nn.Dropout(emb_dropout)
-
-        self.transformer = Transformer(
-            dim, depth, heads, dim_head, mlp_dim, dropout)
-
-        # self.pool = pool
-        # self.to_latent = nn.Identity()
-
-        # self.mlp_head = nn.Sequential(
-        #     nn.LayerNorm(dim),
-        #     nn.Linear(dim, num_classes)
-        # )
-
-        # self.channelTrans = nn.Conv2d(
-        #     in_channels=65, out_channels=512, kernel_size=1, padding=0)
-
-    def forward(self, x):
-        x_vit = x
-        x_vit = self.to_patch_embedding(x_vit)
-        x_AfterPatchEmbedding = x_vit
-        b, n, _ = x_vit.shape
-
-        cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b=b)
-        x_vit = torch.cat((cls_tokens, x_vit), dim=1)
-        x_vit += self.pos_embedding[:, :(n + 1)]
-        x_vit = self.dropout(x_vit)
-
-        vit_layerInfo = []
-        for i in range(4):  # Where to set the depth [6, 64+1, dim=196]
-            x_vit = self.transformer(
-                x_vit, cls_tokens[i], x_AfterPatchEmbedding)
-            vit_layerInfo.append(x_vit)
-
-        return vit_layerInfo
-
-
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(DoubleConv, self).__init__()
@@ -305,24 +246,8 @@ class DBUNetHead(BaseDecodeHead):
     def __init__(self, **kwargs):
         super(DBUNetHead, self).__init__(
             input_transform='multiple_select', **kwargs)
-
-        # resnet = resnet_model.resnet34(pretrained=True)
-        # features=[64, 128, 256, 512],
-
+        
         features = self.in_channels
-
-        # self.firstconv = resnet.conv1
-        # self.firstbn = resnet.bn1
-        # self.firstrelu = resnet.relu
-        # self.encoder1 = resnet.layer1
-        # self.encoder2 = resnet.layer2
-        # self.encoder3 = resnet.layer3
-        # self.encoder4 = resnet.layer4
-
-        # self.encoder = encoder(image_size=224, patch_size=28,
-        #                        dim=196, depth=6, heads=16, mlp_dim=2048)
-
-        # self.conv = nn.Conv2d(1024, 512, 1)
         self.bottleneck = Bottleneck(512, 1024)
         self.ups = nn.ModuleList()
         for feature in reversed(features):
@@ -345,21 +270,8 @@ class DBUNetHead(BaseDecodeHead):
 
     def forward(self, x):
         # b, c, h, w = x.shape
-        # inputs = self._transform_inputs(x)
 
-        # e0 = self.firstconv(x)
-        # e0 = self.firstbn(e0)
-        # e0 = self.firstrelu(e0)
-
-        # e1 = self.encoder1(inputs[0])
-        # e2 = self.encoder2(inputs[1])
-        # e3 = self.encoder3(inputs[2])
-        # e4 = self.encoder4(inputs[3])
-
-        res, vit_layerInfo = x
-
-        # vit_layerInfo = self.encoder(x)
-
+        res, vit_layerInfo = x       
         x = self.bottleneck(res[3])
 
         # Flip to positive order. 0 means the fourth layer...3 means the first layer
