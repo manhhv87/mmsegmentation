@@ -78,7 +78,7 @@ class Attention(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout=0.):
+    def __init__(self, dim, heads, dim_head, mlp_dim, dropout=0.):
         super().__init__()
 
         self.fc = nn.Sequential(
@@ -93,7 +93,6 @@ class Transformer(nn.Module):
         self.PatchConv_stride1_rl = nn.ReLU(inplace=True)
 
         self.layers = nn.ModuleList([])
-        # for _ in range(depth):
         self.layers.append(nn.ModuleList([
             PreNorm(dim, Attention(dim, heads=heads,
                     dim_head=dim_head, dropout=dropout)),
@@ -158,7 +157,6 @@ class Transformer(nn.Module):
 
 # FFB module
 class Bottleneck(nn.Module):
-
     def __init__(self, inplanes, planes, stride=1):
         super(Bottleneck, self).__init__()
 
@@ -244,17 +242,16 @@ class DoubleConv(nn.Module):
 
 
 class TransEncoder(nn.Module):
-    def __init__(self, 
-                 image_size=224, 
-                 in_channels=3, 
-                 patch_size=16, 
-                 dim=96, 
-                 depth=6, 
-                 heads=16, 
-                 mlp_dim=2048, 
-                 dim_head=64, 
-                 dropout=0., 
-                 emb_dropout=0., 
+    def __init__(self,
+                 image_size=224,
+                 in_channels=3,
+                 patch_size=28,
+                 dim=196,
+                 heads=16,          # 224/28 + 224/28
+                 mlp_dim=2048,
+                 dim_head=64,       # 224/28 * 224/28
+                 dropout=0.,
+                 emb_dropout=0.,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -277,8 +274,7 @@ class TransEncoder(nn.Module):
         self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
         self.dropout = nn.Dropout(emb_dropout)
 
-        self.transformer = Transformer(
-            dim, depth, heads, dim_head, mlp_dim, dropout)
+        self.transformer = Transformer(dim, heads, dim_head, mlp_dim, dropout)
 
     def forward(self, x):
         x = self.to_patch_embedding(x)
@@ -322,7 +318,7 @@ class DBUNet(BaseModule):
                  backbone_cfg,
                  img_size=224,
                  in_channels=3,
-                 patch_size=16,
+                 patch_size=28,
                  dim=196,
                  depth=6,
                  heads=16,
