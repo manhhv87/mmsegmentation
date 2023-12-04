@@ -3,156 +3,9 @@ import torch.nn as nn
 import torchvision.transforms.functional as TF
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
-# from torchvision import models as resnet_model
-DEVICE = "cuda:0"
 
 from mmseg.models.decode_heads.decode_head import BaseDecodeHead
 from mmseg.registry import MODELS
-
-
-def pair(t):
-    return t if isinstance(t, tuple) else (t, t)
-
-
-class PreNorm(nn.Module):
-    def __init__(self, dim, fn):
-        super().__init__()
-        self.norm = nn.LayerNorm(dim)
-        self.fn = fn
-
-    def forward(self, x, **kwargs):
-        return self.fn(self.norm(x), **kwargs)
-
-
-# Bock of Transformer Encoder
-# 1. Fedd Forward
-class FeedForward(nn.Module):
-    def __init__(self, dim, hidden_dim, dropout=0.):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(dim, hidden_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim, dim),
-            nn.Dropout(dropout)
-        )
-
-    def forward(self, x):
-        return self.net(x)
-
-
-# 2. Attention
-class Attention(nn.Module):
-    def __init__(self, dim, heads=8, dim_head=64, dropout=0.):
-        super().__init__()
-        inner_dim = dim_head * heads
-        project_out = not (heads == 1 and dim_head == dim)
-
-        self.heads = heads
-        self.scale = dim_head ** -0.5
-
-        self.attend = nn.Softmax(dim=-1)
-        self.dropout = nn.Dropout(dropout)
-
-        self.to_qkv = nn.Linear(dim, inner_dim * 3, bias=False)
-
-        self.to_out = nn.Sequential(
-            nn.Linear(inner_dim, dim),
-            nn.Dropout(dropout)
-        ) if project_out else nn.Identity()
-
-    def forward(self, x):
-        qkv = self.to_qkv(x).chunk(3, dim=-1)
-        q, k, v = map(lambda t: rearrange(
-            t, 'b n (h d) -> b h n d', h=self.heads), qkv)
-
-        dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
-
-        attn = self.attend(dots)
-        attn = self.dropout(attn)
-
-        out = torch.matmul(attn, v)
-        out = rearrange(out, 'b h n d -> b n (h d)')
-        return self.to_out(out)
-
-
-class Transformer(nn.Module):
-    def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout=0.):
-        super().__init__()
-
-        self.fc = nn.Sequential(
-            nn.Linear(64, 12, bias=False),  # Data set for 224
-            nn.ReLU(inplace=True),
-            nn.Linear(12, 64, bias=False),
-            nn.Sigmoid()
-        )
-        self.AdaptiveAvgPool = nn.AdaptiveAvgPool2d(1)
-        self.PatchConv_stride1 = nn.Conv2d(1, 1, 3, 1, 1, bias=False)
-        self.PatchConv_stride1_bn = nn.BatchNorm2d(1)
-        self.PatchConv_stride1_rl = nn.ReLU(inplace=True)
-
-        self.layers = nn.ModuleList([])
-        # for _ in range(depth):
-        self.layers.append(nn.ModuleList([
-            PreNorm(dim, Attention(dim, heads=heads,
-                    dim_head=dim_head, dropout=dropout)),
-            PreNorm(dim, FeedForward(dim, mlp_dim, dropout=dropout))
-        ]))
-
-    def forward(self, x, tokens, x_AfterPatchEmbedding):
-        # Create a new empty tensor to store the first 64 patches
-        x_AfterConv = torch.zeros([1, 1, 64, 196])
-        for i in range(64):  # Iterate over each row (each)
-            # Get the value of this row
-            x_patch_i = x_AfterPatchEmbedding[0][i][:]
-            x_patch_i = x_patch_i.view(1, 1, 1, 196)
-            x_patch_i = self.PatchConv_stride1(x_patch_i)
-            x_patch_i = self.PatchConv_stride1_bn(x_patch_i)
-            x_patch_i = self.PatchConv_stride1_rl(x_patch_i)
-            # Assign value to the newly created tensor x_AfterConv.shape=[1, 1, 64, 196]
-            x_AfterConv[0][0][i][:] = x_patch_i[0][0][0][:]
-        a = x_AfterConv.view(1, 64, 1, 196)
-        a = a.to(DEVICE)
-        # avgpool, compresses a tensor of size [1, 64]
-        b1 = nn.AdaptiveAvgPool2d(1)(a).view(1, 64)
-        b1 = b1.to(DEVICE)
-
-        val, idx = torch.sort(b1)  # Sort in ascending order
-        # If all values are < 0, or all values are > 0,
-        if torch.max(val) < 0 or torch.min(val) > 0:
-            middle = 32
-        else:
-            for i in range(64):
-                if val[0][i] > 0:
-                    # Find the middle value (the intersection of negative and positive)
-                    middle = i
-                    break
-                if i == 63:
-                    middle = 32
-        suppress = idx[0][:middle]
-        excitation = idx[0][middle:]
-        l_s = len(suppress)
-        l_e = len(excitation)
-        b1[0][suppress] = b1[0][suppress] - 1 / \
-            (1 + l_s ** (b1[0][suppress])
-             )  # Anti-sigmoid, the base is the length
-        b1[0][excitation] = b1[0][excitation] + 1 / \
-            (1 + l_e ** -(b1[0][excitation])
-             )  # sigmoid, the base is the length
-        b = b1
-
-        # The previous (1, 64) is the size of b
-        c = self.fc(b).view(1, 64, 1, 1)
-        x_attention = a * c.expand_as(a)
-        # [1, 64, 1, 196] -> [1, 64, 196]
-        x_attention = x_attention.view(1, 64, 196)
-        token = tokens.view(1, 1, 196)
-        x_attention = torch.cat([x_attention, token], dim=1)  # [1, 65, 196]
-
-        for attn, ff in self.layers:
-            x = attn(x) + x + x_attention
-            x = ff(x) + x
-        return x
 
 
 # FFB module
@@ -248,7 +101,7 @@ class DBUNetHead(BaseDecodeHead):
             input_transform='multiple_select', **kwargs)
         
         features = self.in_channels
-        self.bottleneck = Bottleneck(512, 1024)
+        self.bottleneck = Bottleneck(2048, 4096)
         self.ups = nn.ModuleList()
         for feature in reversed(features):
             self.ups.append(
@@ -270,36 +123,47 @@ class DBUNetHead(BaseDecodeHead):
 
     def forward(self, x):
         # b, c, h, w = x.shape
+        # inputs = self._transform_inputs(x)
 
-        res, vit_layerInfo = x       
-        x = self.bottleneck(res[3])
+        x_4, x_8, x_16, x_32, vit_layerInfo_0, vit_layerInfo_1,vit_layerInfo_2, vit_layerInfo_3 = x
+
+        vit_layerInfo = [vit_layerInfo_0, vit_layerInfo_1,vit_layerInfo_2, vit_layerInfo_3]
+
+        x = self.bottleneck(x_32)
 
         # Flip to positive order. 0 means the fourth layer...3 means the first layer
         vit_layerInfo = vit_layerInfo[::-1]
 
-        v = vit_layerInfo[0].view(4, 65, 14, 14)
-        x = torch.cat([x, res[3], v], dim=1)
+        print(vit_layerInfo[0].shape)
+
+        v = vit_layerInfo[0].view(4, 65, 32, 32)
+
+        print(x.shape, x_32.shape, v.shape)
+
+        x = torch.cat([x, x_32, v], dim=1)
+        print(x.shape)
+
         x = self.ups[0](x)
         x = self.ups[1](x)
 
-        v = vit_layerInfo[1].view(4, 65, 14, 14)
+        v = vit_layerInfo[1].view(4, 65, 32, 32)
         v = self.vitLayer_UpConv(v)
-        x = torch.cat([x, res[2], v], dim=1)
+        x = torch.cat([x, x_16, v], dim=1)
         x = self.ups[2](x)
         x = self.ups[3](x)
 
-        v = vit_layerInfo[2].view(4, 65, 14, 14)
+        v = vit_layerInfo[2].view(4, 65, 32, 32)
         v = self.vitLayer_UpConv(v)
         v = self.vitLayer_UpConv(v)
-        x = torch.cat([x, res[1], v], dim=1)
+        x = torch.cat([x, x_8, v], dim=1)
         x = self.ups[4](x)
         x = self.ups[5](x)
 
-        v = vit_layerInfo[3].view(4, 65, 14, 14)
+        v = vit_layerInfo[3].view(4, 65, 32, 32)
         v = self.vitLayer_UpConv(v)
         v = self.vitLayer_UpConv(v)
         v = self.vitLayer_UpConv(v)
-        x = torch.cat([x, res[0], v], dim=1)
+        x = torch.cat([x, x_4, v], dim=1)
         x = self.ups[6](x)
         x = self.ups[7](x)
 

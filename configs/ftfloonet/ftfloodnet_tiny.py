@@ -1,25 +1,31 @@
 _base_ = [
-    '../_base_/models/dbunet.py',
+    '../_base_/models/ftfloodnet.py',
     '../_base_/datasets/floodnet.py',
     '../_base_/default_runtime.py',
     '../_base_/schedules/schedule_80k.py'
 ]
 
-crop_size = (1024, 1024)
+crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint='open-mmlab://resnet50_v1c'
+checkpoint='https://drive.usercontent.google.com/download?id=1jGgAbi15WLFUCRKNT0iBJjhIjeBTNAic&export=download&authuser=0&confirm=t&uuid=5fbbf2e9-09e7-4c87-8d96-e2d94f39eb8d&at=APZUnTUwJEHXVgEGYuOot4Lco-tO:1700896660304'
 
 model = dict(
     data_preprocessor=data_preprocessor,
-
     backbone=dict(
-        img_size=1024,
-        patch_size=128,
-        init_cfg=dict(_delete_=True, type='Pretrained', checkpoint=checkpoint)),
-    
+        type='FTFloodNet',
+        encoder_channels=(96, 192, 384, 768),
+        decode_channels=256,
+        embed_dim=96,
+        depths=(2, 2, 6, 2),
+        num_heads=(3, 6, 12, 24),
+        window_size=8,
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
+
     decode_head=dict(
-        type='DBUNetHead',
-        channels=32,   # input channel of x = self.cls_seg(x)
+        type='ClsHead',
+        in_channels=256,
+        in_index=0,
+        channels=256,
         num_classes=10,
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
@@ -30,8 +36,12 @@ optim_wrapper = dict(
     type='OptimWrapper',
     optimizer=dict(
         type='AdamW', lr=0.00006, betas=(0.9, 0.999), weight_decay=0.01),
-    paramwise_cfg=None
-)
+    paramwise_cfg=dict(
+        custom_keys={
+            'pos_block': dict(decay_mult=0.),
+            'norm': dict(decay_mult=0.),
+            'head': dict(lr_mult=10.)
+        }))
 
 param_scheduler = [
     dict(

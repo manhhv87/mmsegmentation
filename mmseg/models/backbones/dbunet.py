@@ -1,14 +1,14 @@
 import warnings
 import torch
 import torch.nn as nn
-# import torchvision.transforms.functional as TF
+
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 
-# from mmcv.cnn import ConvModule
-
 from mmengine.model import BaseModule
 from mmseg.registry import MODELS
+
+DEVICE = "cuda:0"
 
 
 def pair(t):
@@ -101,21 +101,21 @@ class Transformer(nn.Module):
 
     def forward(self, x, tokens, x_AfterPatchEmbedding):
         # Create a new empty tensor to store the first 64 patches
-        x_AfterConv = torch.zeros([1, 1, 64, 196])
+        x_AfterConv = torch.zeros([1, 1, 64, 1024])
         for i in range(64):  # Iterate over each row (each)
             # Get the value of this row
             x_patch_i = x_AfterPatchEmbedding[0][i][:]
-            x_patch_i = x_patch_i.view(1, 1, 1, 196)
+            x_patch_i = x_patch_i.view(1, 1, 1, 1024)
             x_patch_i = self.PatchConv_stride1(x_patch_i)
             x_patch_i = self.PatchConv_stride1_bn(x_patch_i)
             x_patch_i = self.PatchConv_stride1_rl(x_patch_i)
-            # Assign value to the newly created tensor x_AfterConv.shape=[1, 1, 64, 196]
+            # Assign value to the newly created tensor x_AfterConv.shape=[1, 1, 64, 1024]
             x_AfterConv[0][0][i][:] = x_patch_i[0][0][0][:]
-        a = x_AfterConv.view(1, 64, 1, 196)
-        # a = a.to(DEVICE)
+        a = x_AfterConv.view(1, 64, 1, 1024)
+        a = a.to(DEVICE)
         # avgpool, compresses a tensor of size [1, 64]
         b1 = nn.AdaptiveAvgPool2d(1)(a).view(1, 64)
-        # b1 = b1.to(DEVICE)
+        b1 = b1.to(DEVICE)
 
         val, idx = torch.sort(b1)  # Sort in ascending order
         # If all values are < 0, or all values are > 0,
@@ -144,10 +144,10 @@ class Transformer(nn.Module):
         # The previous (1, 64) is the size of b
         c = self.fc(b).view(1, 64, 1, 1)
         x_attention = a * c.expand_as(a)
-        # [1, 64, 1, 196] -> [1, 64, 196]
-        x_attention = x_attention.view(1, 64, 196)
-        token = tokens.view(1, 1, 196)
-        x_attention = torch.cat([x_attention, token], dim=1)  # [1, 65, 196]
+        # [1, 64, 1, 1024] -> [1, 64, 1024]
+        x_attention = x_attention.view(1, 64, 1024)
+        token = tokens.view(1, 1, 1024)
+        x_attention = torch.cat([x_attention, token], dim=1)  # [1, 65, 1024]
 
         for attn, ff in self.layers:
             x = attn(x) + x + x_attention
@@ -318,6 +318,7 @@ class DBUNet(BaseModule):
                  backbone_cfg,
                  img_size=224,
                  in_channels=3,
+                 out_indices=(0, 1, 2, 3, 4, 5, 6, 7),
                  patch_size=128,
                  dim=196,
                  depth=6,
@@ -342,6 +343,8 @@ class DBUNet(BaseModule):
         else:
             raise TypeError('pretrained must be a str or None')
 
+        self.out_indices = out_indices
+
         self.backbone = MODELS.build(backbone_cfg)
 
         self.transencoder = TransEncoder(image_size=img_size, patch_size=patch_size, dim=dim,
@@ -350,6 +353,7 @@ class DBUNet(BaseModule):
 
     def forward(self, x):
         x_4, x_8, x_16, x_32 = self.backbone(x)
-        vit_layerInfo = self.transencoder(x)
-
-        return tuple(x_4, x_8, x_16, x_32), vit_layerInfo
+        vit_layerInfo = self.transencoder(x)        
+        outs = [x_4, x_8, x_16, x_32, vit_layerInfo[0], vit_layerInfo[1], vit_layerInfo[2], vit_layerInfo[3]]
+        outs = [outs[i] for i in self.out_indices]
+        return tuple(outs)        
