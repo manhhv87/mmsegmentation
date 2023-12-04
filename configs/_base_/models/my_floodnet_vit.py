@@ -1,6 +1,6 @@
 # model settings
-norm_cfg = dict(type='SyncBN', requires_grad=True)
-backbone_norm_cfg = dict(type='LN', requires_grad=True)
+backbone_norm_cfg = dict(type='LN', eps=1e-6, requires_grad=True)
+norm_cfg = dict(type='BN', requires_grad=True)
 
 data_preprocessor = dict(
     type='SegDataPreProcessor',
@@ -16,29 +16,25 @@ model = dict(
     pretrained=None,
 
     backbone=dict(
-        type='SwinTransformer',
-        pretrain_img_size=224,
-        embed_dims=96,
-        patch_size=4,
-        window_size=7,
-        mlp_ratio=4,
-        depths=[2, 2, 6, 2],
-        num_heads=[3, 6, 12, 24],
-        strides=(4, 2, 2, 2),
-        out_indices=(0, 1, 2, 3),
-        qkv_bias=True,
-        qk_scale=None,
-        patch_norm=True,
-        drop_rate=0.,
-        attn_drop_rate=0.,
-        drop_path_rate=0.3,
-        use_abs_pos_embed=False,
-        act_cfg=dict(type='GELU'),
-        norm_cfg=backbone_norm_cfg),
+        type='VisionTransformer',
+        img_size=(512, 512),
+        patch_size=16,
+        in_channels=3,
+        embed_dims=768,
+        num_layers=12,
+        num_heads=12,
+        drop_path_rate=0.1,
+        attn_drop_rate=0.0,
+        drop_rate=0.0,
+        final_norm=True,
+        norm_cfg=backbone_norm_cfg,
+        with_cls_token=True,
+        interpolate_mode='bicubic',
+    ),
 
     decode_head=dict(
         type='UnetfloodnetHead',
-        in_channels=[96, 192, 384, 768],
+        in_channels=[256, 512, 1024, 2048],
         in_index=[0, 1, 2, 3],
         channels=64,
         dropout_ratio=0.1,

@@ -12,23 +12,28 @@ checkpoint='https://drive.usercontent.google.com/download?id=10cFEMpAAmvLJXRZ6kt
 model = dict(
     data_preprocessor=data_preprocessor,
     backbone=dict(
-        type='FTFloodNet',
+        type='SwinTransformer',
         encoder_channels=(96, 192, 384, 768),
         decode_channels=256,
         embed_dim=96,
         depths=(2, 2, 18, 2),
         num_heads=(3, 6, 12, 24),
         window_size=8,
-        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
+        use_abs_pos_embed=False,
+        drop_path_rate=0.3,
+        patch_norm=True,
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
+    ),
 
     decode_head=dict(
-        type='ClsHead',
+        type='UnetfloodnetHead',
         in_channels=256,
         in_index=0,
         channels=256,
         num_classes=10,
         loss_decode=[
-            dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
+            dict(type='CrossEntropyLoss', loss_name='loss_ce',
+                 use_sigmoid=False, loss_weight=0.3),
             dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]))
 
 optim_wrapper = dict(
