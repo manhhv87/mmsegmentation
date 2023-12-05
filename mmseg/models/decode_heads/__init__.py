@@ -43,6 +43,7 @@ from .my_fcn_head import myFCNHead
 from .cls_head import ClsHead
 from .manet_head import MANET
 from .dbunet_head import DBUNetHead
+from .dcswin_head import DCSwinHead
 
 __all__ = [
     'FCNHead', 'PSPHead', 'ASPPHead', 'PSAHead', 'NLHead', 'GCHead', 'CCHead',
@@ -54,5 +55,5 @@ __all__ = [
     'KernelUpdateHead', 'KernelUpdator', 'MaskFormerHead', 'Mask2FormerHead',
     'LightHamHead', 'PIDHead', 'DDRHead', 'VPDDepthHead', 'SideAdapterCLIPHead',
     'UnetformerHead', 'UnetfloodnetHead', 'GeneralHead', 'A2FPN', 'myFCNHead',
-    'ClsHead', 'MANET', 'DBUNetHead'
+    'ClsHead', 'MANET', 'DBUNetHead', 'DCSwinHead'
 ]

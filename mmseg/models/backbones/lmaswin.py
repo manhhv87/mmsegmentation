@@ -1378,7 +1378,7 @@ class CA(nn.Module):
         self.down13 = DownConnection(encoder_channels[0], encoder_channels[2])
 
     def forward(self, x1, x2, x3, x4, x5, x6, x7, x8):
-        out4 = self.conv_4(x4) + self.down24(x6)  # [2, 768, 32, 32] 
+        out4 = self.conv_4(x4) + self.down24(x6)  # [2, 768, 32, 32]
         out3 = self.conv_3(x3) + self.down13(x5)  # [2, 384, 64, 64]
         out2 = self.conv_2(x2) + self.up42(x8)    # [2, 192, 128, 128]
         out1 = self.conv_1(x1) + self.up31(x7)    # [2, 96, 256, 256]
@@ -1478,5 +1478,5 @@ class LMASwin(BaseModule):
     def forward(self, x):
         x1, x2, x3, x4 = self.backbone(x)
         x5, x6, x7, x8 = self.supencoder(x)
-        x = self.decoder(x1, x2, x3, x4, x5, x6, x7, x8)    # [2, 96, 256, 256]                  
+        x = self.decoder(x1, x2, x3, x4, x5, x6, x7, x8)    # [2, 96, 256, 256]
         return x

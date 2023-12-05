@@ -8,8 +8,25 @@ from mmseg.models.decode_heads.decode_head import BaseDecodeHead
 from mmseg.registry import MODELS
 
 
+class DoubleConv(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(DoubleConv, self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, 3, 1, 1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, 3, 1, 1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        return self.conv(x)
+
+
 # FFB module
 class Bottleneck(nn.Module):
+
     def __init__(self, inplanes, planes, stride=1):
         super(Bottleneck, self).__init__()
 
@@ -78,30 +95,15 @@ class Bottleneck(nn.Module):
         return out
 
 
-class DoubleConv(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(DoubleConv, self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
-        )
-
-    def forward(self, x):
-        return self.conv(x)
-
-
 @MODELS.register_module()
 class DBUNetHead(BaseDecodeHead):
     def __init__(self, **kwargs):
         super(DBUNetHead, self).__init__(
             input_transform='multiple_select', **kwargs)
-        
+
         features = self.in_channels
-        self.bottleneck = Bottleneck(2048, 4096)
+
+        self.bottleneck = Bottleneck(512, 1024)
         self.ups = nn.ModuleList()
         for feature in reversed(features):
             self.ups.append(
@@ -110,39 +112,28 @@ class DBUNetHead(BaseDecodeHead):
                 )
             )
             self.ups.append(DoubleConv(feature * 2, feature))
-        
-        # self.finalconv = nn.Conv2d(features[0], out_channels, kernel_size=1)
 
-        self.vitLayer_UpConv = nn.ConvTranspose2d(65, 65, kernel_size=2, stride=2)
+        self.vitLayer_UpConv = nn.ConvTranspose2d(
+            65, 65, kernel_size=2, stride=2)
 
         self.final_conv1 = nn.ConvTranspose2d(64, 32, 1)
         self.final_relu1 = nn.ReLU(inplace=True)
         self.final_conv2 = nn.Conv2d(32, 32, 3, padding=1)
         self.final_relu2 = nn.ReLU(inplace=True)
-        # self.final_conv3 = nn.Conv2d(32, 1, 3, padding=1)
 
     def forward(self, x):
-        # b, c, h, w = x.shape
-        # inputs = self._transform_inputs(x)
+        x_4, x_8, x_16, x_32, vit_layerInfo_0, vit_layerInfo_1, vit_layerInfo_2, vit_layerInfo_3 = x
 
-        x_4, x_8, x_16, x_32, vit_layerInfo_0, vit_layerInfo_1,vit_layerInfo_2, vit_layerInfo_3 = x
-
-        vit_layerInfo = [vit_layerInfo_0, vit_layerInfo_1,vit_layerInfo_2, vit_layerInfo_3]
+        vit_layerInfo = [vit_layerInfo_0, vit_layerInfo_1,
+                         vit_layerInfo_2, vit_layerInfo_3]
 
         x = self.bottleneck(x_32)
 
         # Flip to positive order. 0 means the fourth layer...3 means the first layer
         vit_layerInfo = vit_layerInfo[::-1]
 
-        print(vit_layerInfo[0].shape)
-
         v = vit_layerInfo[0].view(4, 65, 32, 32)
-
-        print(x.shape, x_32.shape, v.shape)
-
         x = torch.cat([x, x_32, v], dim=1)
-        print(x.shape)
-
         x = self.ups[0](x)
         x = self.ups[1](x)
 
@@ -171,6 +162,6 @@ class DBUNetHead(BaseDecodeHead):
         out1 = self.final_relu1(out1)
         out = self.final_conv2(out1)
         out = self.final_relu2(out)
-        # out = self.final_conv3(out)
         out = self.cls_seg(out)
+
         return out

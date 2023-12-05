@@ -1,7 +1,6 @@
 import warnings
 import torch
 import torch.nn as nn
-
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 
@@ -11,10 +10,12 @@ from mmseg.registry import MODELS
 DEVICE = "cuda:0"
 
 
+# helpers
 def pair(t):
     return t if isinstance(t, tuple) else (t, t)
 
 
+# classes
 class PreNorm(nn.Module):
     def __init__(self, dim, fn):
         super().__init__()
@@ -78,7 +79,7 @@ class Attention(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, dim, heads, dim_head, mlp_dim, dropout=0.):
+    def __init__(self, dim, depth, heads, dim_head, mlp_dim, dropout=0.):
         super().__init__()
 
         self.fc = nn.Sequential(
@@ -93,6 +94,8 @@ class Transformer(nn.Module):
         self.PatchConv_stride1_rl = nn.ReLU(inplace=True)
 
         self.layers = nn.ModuleList([])
+
+        # for _ in range(depth):
         self.layers.append(nn.ModuleList([
             PreNorm(dim, Attention(dim, heads=heads,
                     dim_head=dim_head, dropout=dropout)),
@@ -101,20 +104,20 @@ class Transformer(nn.Module):
 
     def forward(self, x, tokens, x_AfterPatchEmbedding):
         # Create a new empty tensor to store the first 64 patches
-        x_AfterConv = torch.zeros([1, 1, 64, 1024])
+        x_AfterConv = torch.zeros([1, 1, 64, 196])
         for i in range(64):  # Iterate over each row (each)
             # Get the value of this row
             x_patch_i = x_AfterPatchEmbedding[0][i][:]
-            x_patch_i = x_patch_i.view(1, 1, 1, 1024)
+            x_patch_i = x_patch_i.view(1, 1, 1, 196)
             x_patch_i = self.PatchConv_stride1(x_patch_i)
             x_patch_i = self.PatchConv_stride1_bn(x_patch_i)
             x_patch_i = self.PatchConv_stride1_rl(x_patch_i)
-            # Assign value to the newly created tensor x_AfterConv.shape=[1, 1, 64, 1024]
+            # Assign value to the newly created tensor x_AfterConv.shape=[1, 1, 64, 196]
             x_AfterConv[0][0][i][:] = x_patch_i[0][0][0][:]
-        a = x_AfterConv.view(1, 64, 1, 1024)
+        a = x_AfterConv.view(1, 64, 1, 196)
         a = a.to(DEVICE)
-        # avgpool, compresses a tensor of size [1, 64]
-        b1 = nn.AdaptiveAvgPool2d(1)(a).view(1, 64)
+        b1 = nn.AdaptiveAvgPool2d(1)(a).view(
+            1, 64)  # avgpool, compresses a tensor of size [1, 64]
         b1 = b1.to(DEVICE)
 
         val, idx = torch.sort(b1)  # Sort in ascending order
@@ -144,101 +147,15 @@ class Transformer(nn.Module):
         # The previous (1, 64) is the size of b
         c = self.fc(b).view(1, 64, 1, 1)
         x_attention = a * c.expand_as(a)
-        # [1, 64, 1, 1024] -> [1, 64, 1024]
-        x_attention = x_attention.view(1, 64, 1024)
-        token = tokens.view(1, 1, 1024)
-        x_attention = torch.cat([x_attention, token], dim=1)  # [1, 65, 1024]
+        # [1, 64, 1, 196] -> [1, 64, 196]
+        x_attention = x_attention.view(1, 64, 196)
+        token = tokens.view(1, 1, 196)
+        x_attention = torch.cat([x_attention, token], dim=1)  # [1, 65, 196]
 
         for attn, ff in self.layers:
             x = attn(x) + x + x_attention
             x = ff(x) + x
         return x
-
-
-# FFB module
-class Bottleneck(nn.Module):
-    def __init__(self, inplanes, planes, stride=1):
-        super(Bottleneck, self).__init__()
-
-        # Firstly, the channel dimension is increased by 1 * 1 convolution,
-        # and the number of channels to be trained is fixed at the early stage of Bottleneck.
-        self.conv1 = nn.Conv2d(
-            inplanes, planes, kernel_size=1, stride=stride, groups=4, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
-
-        # Then, 3 * 3 convolution is used to realize the first feature extraction.
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3,
-                               stride=1, padding=1, groups=2, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
-
-        # Next, 1 * 1 convolution is employed again to achieve feature information fusion with the same number of channels.
-        self.conv3 = nn.Conv2d(planes, planes, kernel_size=1,
-                               stride=1, groups=4, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes)
-
-        # Finally, 3 * 3 and 1 * 1 convolutions are performed respectively to realize feature re-extraction and information re-fusion.
-        self.conv4 = nn.Conv2d(planes, planes, kernel_size=3,
-                               stride=1, padding=1, groups=2, bias=False)
-        self.bn4 = nn.BatchNorm2d(planes)
-
-        self.conv5 = nn.Conv2d(planes, planes, kernel_size=1,
-                               stride=1, groups=4, bias=False)
-        self.bn5 = nn.BatchNorm2d(planes)
-
-        self.relu = nn.ReLU(inplace=True)
-
-    def forward(self, x):
-        # Firstly, the channel dimension is increased by 1 * 1 convolution,
-        # and the number of channels to be trained is fixed at the early stage of Bottleneck.
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-
-        residual1 = out
-
-        # Then, 3 * 3 convolution is used to realize the first feature extraction.
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = self.relu(out)
-
-        residual2 = out
-
-        # Next, 1 * 1 convolution is employed again to achieve feature information fusion with the same number of channels.
-        out = self.conv3(out)
-        out = self.bn3(out)
-        out = self.relu(out)
-
-        out = out + residual1
-
-        # Finally, 3 * 3 convolution is performed to realize feature re-extraction.
-        out = self.conv4(out)
-        out = self.bn4(out)
-        out = self.relu(out)
-
-        out = out + residual2
-
-        # Finally, 1 * 1 convolution is used to realize information re-fusion.
-        out = self.conv5(out)
-        out = self.bn5(out)
-        out = self.relu(out)
-
-        return out
-
-
-class DoubleConv(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(DoubleConv, self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, 3, 1, 1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
-        )
-
-    def forward(self, x):
-        return self.conv(x)
 
 
 class TransEncoder(nn.Module):
@@ -247,6 +164,7 @@ class TransEncoder(nn.Module):
                  in_channels=3,
                  patch_size=128,
                  dim=196,
+                 depth=6,
                  heads=16,          # 224/28 + 224/28
                  mlp_dim=2048,
                  dim_head=64,       # 224/28 * 224/28
@@ -258,8 +176,6 @@ class TransEncoder(nn.Module):
         image_height, image_width = pair(image_size)
         patch_height, patch_width = pair(patch_size)
 
-        assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
-
         num_patches = (image_height // patch_height) * \
             (image_width // patch_width)
         patch_dim = in_channels * patch_height * patch_width
@@ -270,27 +186,28 @@ class TransEncoder(nn.Module):
             nn.Linear(patch_dim, dim),
         )
 
-        self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim))
         self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
+        self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim))
         self.dropout = nn.Dropout(emb_dropout)
-
-        self.transformer = Transformer(dim, heads, dim_head, mlp_dim, dropout)
+        self.transformer = Transformer(
+            dim, depth, heads, dim_head, mlp_dim, dropout)
 
     def forward(self, x):
-        x = self.to_patch_embedding(x)
-        x_AfterPatchEmbedding = x
-        b, n, _ = x.shape
+        x_vit = x
+        x_vit = self.to_patch_embedding(x_vit)
+        x_AfterPatchEmbedding = x_vit
+        b, n, _ = x_vit.shape
 
         cls_tokens = repeat(self.cls_token, '1 1 d -> b 1 d', b=b)
-        x = torch.cat((cls_tokens, x), dim=1)
-        x += self.pos_embedding[:, :(n + 1)]
-        x = self.dropout(x)
+        x_vit = torch.cat((cls_tokens, x_vit), dim=1)
+        x_vit += self.pos_embedding[:, :(n + 1)]
+        x_vit = self.dropout(x_vit)
 
         vit_layerInfo = []
         for i in range(4):  # Where to set the depth [6, 64+1, dim=196]
-            x = self.transformer(
-                x, cls_tokens[i], x_AfterPatchEmbedding)
-            vit_layerInfo.append(x)
+            x_vit = self.transformer(
+                x_vit, cls_tokens[i], x_AfterPatchEmbedding)
+            vit_layerInfo.append(x_vit)
 
         return vit_layerInfo
 
@@ -319,9 +236,8 @@ class DBUNet(BaseModule):
                  img_size=224,
                  in_channels=3,
                  out_indices=(0, 1, 2, 3, 4, 5, 6, 7),
-                 patch_size=128,
+                 patch_size=28,
                  dim=196,
-                 depth=6,
                  heads=16,
                  mlp_dim=2048,
                  dim_head=64,
@@ -353,7 +269,10 @@ class DBUNet(BaseModule):
 
     def forward(self, x):
         x_4, x_8, x_16, x_32 = self.backbone(x)
-        vit_layerInfo = self.transencoder(x)        
-        outs = [x_4, x_8, x_16, x_32, vit_layerInfo[0], vit_layerInfo[1], vit_layerInfo[2], vit_layerInfo[3]]
+        vit_layerInfo = self.transencoder(x)
+
+        outs = [x_4, x_8, x_16, x_32, vit_layerInfo[0],
+                vit_layerInfo[1], vit_layerInfo[2], vit_layerInfo[3]]
         outs = [outs[i] for i in self.out_indices]
-        return tuple(outs)        
+
+        return tuple(outs)

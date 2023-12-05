@@ -1,5 +1,5 @@
 _base_ = [
-    '../_base_/models/my_floodnet_vit.py',
+    '../_base_/models/floodnet_swin.py',
     '../_base_/datasets/floodnet.py',
     '../_base_/default_runtime.py',
     '../_base_/schedules/schedule_80k.py'
@@ -7,32 +7,31 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/segmenter/vit_small_p16_384_20220308-410f6037.pth'  # noqa
-
-backbone_norm_cfg = dict(type='LN', eps=1e-6, requires_grad=True)
+checkpoint = 'https://drive.usercontent.google.com/download?id=10cFEMpAAmvLJXRZ6ktl_UJClVYOUb1_2&export=download&authuser=0&confirm=t&uuid=ae22130a-c843-426d-abc7-972337b76336&at=APZUnTWEpKsY6EWEIM6Ghm8RczHu:1700898129102'
+# checkpoint = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/swin/swin_small_patch4_window7_224_20220317-7ba6d6dd.pth'  # noqa
 
 model = dict(
     data_preprocessor=data_preprocessor,
-    pretrained=checkpoint,
-
-    # vit_small_patch16_384
     backbone=dict(
-        img_size=(1024, 1024),
-        embed_dims=384,
-        num_heads=12,
+        type='SwinTransformer',
+        embed_dims=96,
+        depths=[2, 2, 18, 2],
+        num_heads=[3, 6, 12, 24],
+        window_size=7,
+        drop_path_rate=0.3,
+        patch_norm=True,
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
     ),
 
     decode_head=dict(
-        type='SegmenterMaskTransformerHead',
-        in_channels=384,
-        channels=384,
+        type='UnetfloodnetHead',
+        in_channels=[96, 192, 384, 768],
+        in_index=[0, 1, 2, 3],
+        channels=64,
         num_classes=10,
-        num_layers=2,
-        num_heads=6,
-        embed_dims=384,
-        dropout_ratio=0.0,
         loss_decode=[
-            dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
+            dict(type='CrossEntropyLoss', loss_name='loss_ce',
+                 use_sigmoid=False, loss_weight=0.3),
             dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]))
 
 optim_wrapper = dict(
@@ -60,6 +59,6 @@ param_scheduler = [
     )
 ]
 
-train_dataloader = dict(batch_size=2, num_workers=2)
-val_dataloader = dict(batch_size=1, num_workers=4)
+train_dataloader = dict(batch_size=8, num_workers=2)
+val_dataloader = dict(batch_size=8, num_workers=2)
 test_dataloader = val_dataloader

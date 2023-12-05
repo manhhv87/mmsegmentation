@@ -1,6 +1,5 @@
 # model settings
-backbone_norm_cfg = dict(type='LN', eps=1e-6, requires_grad=True)
-norm_cfg = dict(type='BN', requires_grad=True)
+norm_cfg = dict(type='SyncBN', requires_grad=True)
 
 data_preprocessor = dict(
     type='SegDataPreProcessor',
@@ -16,25 +15,24 @@ model = dict(
     pretrained=None,
 
     backbone=dict(
-        type='VisionTransformer',
-        img_size=(512, 512),
-        patch_size=16,
+        type='MixVisionTransformer',
         in_channels=3,
-        embed_dims=768,
-        num_layers=12,
-        num_heads=12,
-        drop_path_rate=0.1,
-        attn_drop_rate=0.0,
+        embed_dims=32,
+        num_stages=4,
+        num_layers=[2, 2, 2, 2],
+        num_heads=[1, 2, 5, 8],
+        patch_sizes=[7, 3, 3, 3],
+        sr_ratios=[8, 4, 2, 1],
+        out_indices=(0, 1, 2, 3),
+        mlp_ratio=4,
+        qkv_bias=True,
         drop_rate=0.0,
-        final_norm=True,
-        norm_cfg=backbone_norm_cfg,
-        with_cls_token=True,
-        interpolate_mode='bicubic',
-    ),
+        attn_drop_rate=0.0,
+        drop_path_rate=0.1),
 
     decode_head=dict(
         type='UnetfloodnetHead',
-        in_channels=[256, 512, 1024, 2048],
+        in_channels=[32, 64, 160, 256],
         in_index=[0, 1, 2, 3],
         channels=64,
         dropout_ratio=0.1,
@@ -42,7 +40,8 @@ model = dict(
         norm_cfg=norm_cfg,
         align_corners=False,
         loss_decode=dict(
-            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
+            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)
+    ),
 
     # model training and testing settings
     train_cfg=dict(),

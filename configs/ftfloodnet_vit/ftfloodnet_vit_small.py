@@ -1,5 +1,5 @@
 _base_ = [
-    '../_base_/models/ftunetformer.py',
+    '../_base_/models/ftfloodnet_vit.py',
     '../_base_/datasets/floodnet.py',
     '../_base_/default_runtime.py',
     '../_base_/schedules/schedule_80k.py'
@@ -7,27 +7,31 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint = 'https://drive.usercontent.google.com/download?id=1jGgAbi15WLFUCRKNT0iBJjhIjeBTNAic&export=download&authuser=0&confirm=t&uuid=5fbbf2e9-09e7-4c87-8d96-e2d94f39eb8d&at=APZUnTUwJEHXVgEGYuOot4Lco-tO:1700896660304'
-# checkpoint_file = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/swin/swin_tiny_patch4_window7_224_20220317-1cdeb081.pth'  # noqa
+checkpoint = 'https://download.openmmlab.com/mmsegmentation/v0.5/segmenter/segmenter_vit-s_mask_8x1_512x512_160k_ade20k/segmenter_vit-s_mask_8x1_512x512_160k_ade20k_20220105_151706-511bb103.pth'
 
 model = dict(
-    data_preprocessor=data_preprocessor,
+    tdata_preprocessor=data_preprocessor,
     backbone=dict(
-        type='SwinTransformer',
-        embed_dims=96,
-        depths=[2, 2, 6, 2],
-        num_heads=[3, 6, 12, 24],
-        window_size=8,
-        drop_path_rate=0.2,
-        patch_norm=True,
+        type='VisionTransformer',
+        img_size=(224, 224),
+        patch_size=16,
+        in_channels=3,
+        embed_dims=384,
+        num_layers=12,
+        num_heads=6,
+        out_indices=(0, 1, 2, 3),
+        drop_path_rate=0.1,
+        attn_drop_rate=0.0,
+        drop_rate=0.0,
         init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
     ),
 
     decode_head=dict(
-        type='UnetformerHead',
+        type='UnetfloodnetHead',
         in_channels=[96, 192, 384, 768],
         in_index=[0, 1, 2, 3],
-        channels=256,
+        channels=64,
+        dropout_ratio=0.1,
         num_classes=10,
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce',
@@ -39,12 +43,7 @@ optim_wrapper = dict(
     type='OptimWrapper',
     optimizer=dict(
         type='AdamW', lr=0.00006, betas=(0.9, 0.999), weight_decay=0.01),
-    paramwise_cfg=dict(
-        custom_keys={
-            'pos_block': dict(decay_mult=0.),
-            'norm': dict(decay_mult=0.),
-            'head': dict(lr_mult=10.)
-        }))
+    paramwise_cfg=None)
 
 param_scheduler = [
     dict(

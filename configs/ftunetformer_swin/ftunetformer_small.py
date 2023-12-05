@@ -1,5 +1,5 @@
 _base_ = [
-    '../_base_/models/ftfloodnet.py',
+    '../_base_/models/ftunetformer.py',
     '../_base_/datasets/floodnet.py',
     '../_base_/default_runtime.py',
     '../_base_/schedules/schedule_80k.py'
@@ -8,7 +8,7 @@ _base_ = [
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
 checkpoint = 'https://drive.usercontent.google.com/download?id=10cFEMpAAmvLJXRZ6ktl_UJClVYOUb1_2&export=download&authuser=0&confirm=t&uuid=ae22130a-c843-426d-abc7-972337b76336&at=APZUnTWEpKsY6EWEIM6Ghm8RczHu:1700898129102'
-# checkpoint_file = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/swin/swin_small_patch4_window7_224_20220317-7ba6d6dd.pth'  # noqa
+# checkpoint = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/swin/swin_small_patch4_window7_224_20220317-7ba6d6dd.pth'  # noqa
 
 model = dict(
     data_preprocessor=data_preprocessor,
@@ -17,17 +17,16 @@ model = dict(
         embed_dims=96,
         depths=[2, 2, 18, 2],
         num_heads=[3, 6, 12, 24],
-        window_size=8,
+        window_size=7,
         drop_path_rate=0.3,
-        patch_norm=True,
         init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
     ),
 
     decode_head=dict(
-        type='UnetfloodnetHead',
+        type='UnetformerHead',
         in_channels=[96, 192, 384, 768],
         in_index=[0, 1, 2, 3],
-        channels=64,
+        channels=256,
         num_classes=10,
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce',
