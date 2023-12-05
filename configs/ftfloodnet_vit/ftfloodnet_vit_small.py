@@ -1,5 +1,5 @@
 _base_ = [
-    '../_base_/models/ftfloodnet_vit.py',
+    '../_base_/models/floodnet_vit.py',
     '../_base_/datasets/floodnet.py',
     '../_base_/default_runtime.py',
     '../_base_/schedules/schedule_80k.py'
