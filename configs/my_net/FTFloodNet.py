@@ -7,28 +7,27 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint = 'https://drive.usercontent.google.com/download?id=1jGgAbi15WLFUCRKNT0iBJjhIjeBTNAic&export=download&authuser=0&confirm=t&uuid=5fbbf2e9-09e7-4c87-8d96-e2d94f39eb8d&at=APZUnTUwJEHXVgEGYuOot4Lco-tO:1700896660304'
+checkpoint = 'https://drive.usercontent.google.com/download?id=10cFEMpAAmvLJXRZ6ktl_UJClVYOUb1_2&export=download&authuser=0&confirm=t&uuid=ae22130a-c843-426d-abc7-972337b76336&at=APZUnTWEpKsY6EWEIM6Ghm8RczHu:1700898129102'
+# checkpoint_file = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/swin/swin_small_patch4_window7_224_20220317-7ba6d6dd.pth'  # noqa
 
 model = dict(
     data_preprocessor=data_preprocessor,
     backbone=dict(
         type='SwinTransformer',
-        encoder_channels=(96, 192, 384, 768),
-        decode_channels=256,
         embed_dim=96,
-        depths=(2, 2, 6, 2),
-        num_heads=(3, 6, 12, 24),
+        depths=[2, 2, 18, 2],
+        num_heads=[3, 6, 12, 24],
         window_size=8,
-        init_cfg=dict(type='Pretrained', checkpoint=checkpoint),
-        use_abs_pos_embed=False,
         drop_path_rate=0.3,
-        patch_norm=True),
+        patch_norm=True,
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
+    ),
 
     decode_head=dict(
         type='UnetfloodnetHead',
-        in_channels=256,
-        in_index=0,
-        channels=256,
+        in_channels=[96, 192, 384, 768],
+        in_index=[0, 1, 2, 3],
+        channels=64,
         num_classes=10,
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce',

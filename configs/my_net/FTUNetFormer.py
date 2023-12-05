@@ -1,4 +1,3 @@
-# Fully Transformer-based network
 _base_ = [
     '../_base_/models/ftunetformer.py',
     '../_base_/datasets/floodnet.py',
@@ -8,28 +7,31 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint='https://drive.usercontent.google.com/download?id=10cFEMpAAmvLJXRZ6ktl_UJClVYOUb1_2&export=download&authuser=0&confirm=t&uuid=ae22130a-c843-426d-abc7-972337b76336&at=APZUnTWEpKsY6EWEIM6Ghm8RczHu:1700898129102'
+checkpoint = 'https://drive.usercontent.google.com/download?id=10cFEMpAAmvLJXRZ6ktl_UJClVYOUb1_2&export=download&authuser=0&confirm=t&uuid=ae22130a-c843-426d-abc7-972337b76336&at=APZUnTWEpKsY6EWEIM6Ghm8RczHu:1700898129102'
+# checkpoint_file = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/swin/swin_small_patch4_window7_224_20220317-7ba6d6dd.pth'  # noqa
 
 model = dict(
     data_preprocessor=data_preprocessor,
     backbone=dict(
-        type='FTUNetFormer',
-        encoder_channels=(96, 192, 384, 768),
-        decode_channels=256,
+        type='SwinTransformer',
         embed_dim=96,
-        depths=(2, 2, 18, 2),
-        num_heads=(3, 6, 12, 24),
+        depths=[2, 2, 18, 2],
+        num_heads=[3, 6, 12, 24],
         window_size=8,
-        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
+        drop_path_rate=0.3,
+        patch_norm=True,
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
+    ),
 
     decode_head=dict(
-        type='ClsHead',
-        in_channels=256,
-        in_index=0,
+        type='UnetformerHead',
+        in_channels=[96, 192, 384, 768],
+        in_index=[0, 1, 2, 3],
         channels=256,
         num_classes=10,
         loss_decode=[
-            dict(type='CrossEntropyLoss', loss_name='loss_ce', use_sigmoid=False, loss_weight=0.3),
+            dict(type='CrossEntropyLoss', loss_name='loss_ce',
+                 use_sigmoid=False, loss_weight=0.3),
             dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]))
 
 optim_wrapper = dict(
