@@ -1,5 +1,5 @@
 _base_ = [
-    '../_base_/models/ftfloodnet_vit.py',
+    '../_base_/models/floodnet_vit.py',
     '../_base_/datasets/floodnet.py',
     '../_base_/default_runtime.py',
     '../_base_/schedules/schedule_80k.py'
@@ -7,7 +7,9 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint = 'https://download.openmmlab.com/mmsegmentation/v0.5/segmenter/segmenter_vit-t_mask_8x1_512x512_160k_ade20k/segmenter_vit-t_mask_8x1_512x512_160k_ade20k_20220105_151706-ffcf7509.pth'
+# checkpoint = 'https://download.openmmlab.com/mmsegmentation/v0.5/segmenter/segmenter_vit-s_mask_8x1_512x512_160k_ade20k/segmenter_vit-s_mask_8x1_512x512_160k_ade20k_20220105_151706-511bb103.pth'
+# checkpoint = 'https://storage.googleapis.com/vit_models/augreg/S_16-i21k-300ep-lr_0.001-aug_light1-wd_0.03-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.03-res_224.npz'
+checkpoint = 'https://dl.fbaipublicfiles.com/deit/deit_small_patch16_224-cd65a155.pth'
 
 model = dict(
     tdata_preprocessor=data_preprocessor,
@@ -16,14 +18,14 @@ model = dict(
         img_size=(224, 224),
         patch_size=16,
         in_channels=3,
-        embed_dims=192,
+        embed_dims=384,
         num_layers=12,
-        num_heads=3,
-        out_indices=(0, 1, 2, 3),
+        num_heads=6,
+        out_indices=(2, 5, 8, 11),
         drop_path_rate=0.1,
         attn_drop_rate=0.0,
         drop_rate=0.0,
-        # init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
     ),
 
     decode_head=dict(

@@ -7,7 +7,9 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint = 'https://download.openmmlab.com/mmsegmentation/v0.5/segmenter/segmenter_vit-b_mask_8x1_512x512_160k_ade20k/segmenter_vit-b_mask_8x1_512x512_160k_ade20k_20220105_151706-bc533b08.pth'
+# checkpoint = 'https://download.openmmlab.com/mmsegmentation/v0.5/segmenter/segmenter_vit-b_mask_8x1_512x512_160k_ade20k/segmenter_vit-b_mask_8x1_512x512_160k_ade20k_20220105_151706-bc533b08.pth'
+# checkpoint = 'gs://vit_models/augreg/B_16-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.0-sd_0.0.npz'
+checkpoint = 'https://dl.fbaipublicfiles.com/deit/deit_base_patch16_224-b5f2ef4d.pth'
 
 model = dict(
     tdata_preprocessor=data_preprocessor,
@@ -19,7 +21,7 @@ model = dict(
         embed_dims=768,
         num_layers=12,
         num_heads=12,
-        out_indices=(0, 1, 2, 3),
+        out_indices=(2, 5, 8, 11),
         drop_path_rate=0.1,
         attn_drop_rate=0.0,
         drop_rate=0.0,
