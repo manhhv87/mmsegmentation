@@ -1,5 +1,5 @@
 _base_ = [
-    '../_base_/models/segformer_mit-b0.py',
+    '../_base_/models/floodnet_mit.py',
     '../_base_/datasets/floodnet.py',
     '../_base_/default_runtime.py',
     '../_base_/schedules/schedule_80k.py'
@@ -15,7 +15,7 @@ model = dict(
         type='MixVisionTransformer',
         embed_dims=64,
         num_layers=[3, 4, 6, 3],
-        num_heads=[1, 2, 5, 8],     
+        num_heads=[1, 2, 5, 8],
         init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
     ),
 
@@ -34,7 +34,12 @@ optim_wrapper = dict(
     type='OptimWrapper',
     optimizer=dict(
         type='AdamW', lr=0.00006, betas=(0.9, 0.999), weight_decay=0.01),
-    paramwise_cfg=None)
+    paramwise_cfg=dict(
+        custom_keys={
+            'pos_block': dict(decay_mult=0.),
+            'norm': dict(decay_mult=0.),
+            'head': dict(lr_mult=10.)
+        }))
 
 param_scheduler = [
     dict(
