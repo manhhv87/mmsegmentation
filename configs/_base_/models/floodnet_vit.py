@@ -1,6 +1,6 @@
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
-backbone_norm_cfg = dict(type='LN', requires_grad=True)
+backbone_norm_cfg = dict(type='LN', eps=1e-6, requires_grad=True)
 
 data_preprocessor = dict(
     type='SegDataPreProcessor',
@@ -13,33 +13,33 @@ data_preprocessor = dict(
 model = dict(
     type='EncoderDecoder',
     data_preprocessor=data_preprocessor,
+    pretrained=None,
+
     backbone=dict(
-        type='SwinTransformer',
-        pretrain_img_size=224,
-        embed_dims=128,
-        patch_size=4,
-        window_size=7,
+        type='VisionTransformer',
+        img_size=(224, 224),
+        patch_size=16,
+        in_channels=3,
+        embed_dims=768,
+        num_layers=12,
+        num_heads=12,
         mlp_ratio=4,
-        depths=[2, 2, 18, 2],
-        num_heads=[4, 8, 16, 32],
-        strides=(4, 2, 2, 2),
-        out_indices=(0, 1, 2, 3),
-        qkv_bias=True,
-        qk_scale=None,
-        patch_norm=True,
-        drop_rate=0.,
-        attn_drop_rate=0.,
-        drop_path_rate=0.5,
-        use_abs_pos_embed=False,
-        act_cfg=dict(type='GELU'),
-        norm_cfg=backbone_norm_cfg
+        out_indices=(2, 5, 8, 11),
+        qkv_bias=True,      
+        drop_path_rate=0.1,        
+        attn_drop_rate=0.0,
+        drop_rate=0.0,
+        final_norm=True,
+        norm_cfg=backbone_norm_cfg,
+        with_cls_token=True,
+        interpolate_mode='bicubic',
     ),
 
     decode_head=dict(
-        type='DCSwinHead',
-        in_channels=[128, 256, 512, 1024],
+        type='UnetfloodnetHead',
+        in_channels=[768, 768, 768, 768],
         in_index=[0, 1, 2, 3],
-        channels=128,        
+        channels=64,
         dropout_ratio=0.1,
         num_classes=10,
         norm_cfg=norm_cfg,
@@ -47,7 +47,7 @@ model = dict(
         loss_decode=dict(
             type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)
     ),
-    
+
     # model training and testing settings
     train_cfg=dict(),
     test_cfg=dict(mode='whole'))

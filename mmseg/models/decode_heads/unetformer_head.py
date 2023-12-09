@@ -381,30 +381,27 @@ class Decoder(nn.Module):
                  encoder_channels=(64, 128, 256, 512),
                  decode_channels=64,
                  dropout=0.1,
-                 window_size=8,
-                 num_classes=6):
+                 window_size=8):
         super(Decoder, self).__init__()
 
         self.pre_conv = ConvBN(
             encoder_channels[-1], decode_channels, kernel_size=1)
 
         # GLTB, number of heads h are both set to 8
-        self.glbt3 = GLTB(dim=decode_channels, num_heads=8, window_size=window_size)
+        self.glbt3 = GLTB(dim=decode_channels, num_heads=8,
+                          window_size=window_size)
 
         self.ws3 = WS(encoder_channels[-2], decode_channels)     # weight sum
 
-        self.glbt2 = GLTB(dim=decode_channels, num_heads=8, window_size=window_size)
+        self.glbt2 = GLTB(dim=decode_channels, num_heads=8,
+                          window_size=window_size)
 
         self.ws2 = WS(encoder_channels[-3], decode_channels)
 
-        self.glbt1 = GLTB(dim=decode_channels, num_heads=8, window_size=window_size)
+        self.glbt1 = GLTB(dim=decode_channels, num_heads=8,
+                          window_size=window_size)
 
         self.ws1 = WS(encoder_channels[-4], decode_channels)
-
-        # if self.training:
-        #     self.up4 = nn.UpsamplingBilinear2d(scale_factor=4)
-        #     self.up3 = nn.UpsamplingBilinear2d(scale_factor=2)
-        #     self.aux_head = AuxHead(decode_channels, num_classes)
 
         self.frh = FeatureRefinementHead(decode_channels)
 
@@ -415,7 +412,7 @@ class Decoder(nn.Module):
     def forward(self, res1, res2, res3, res4, h, w):
         x = self.glbt3(self.pre_conv(res4))
         x = self.ws3(x, res3)
-        
+
         x = self.glbt2(x)
         x = self.ws2(x, res2)
 
@@ -442,24 +439,18 @@ class UnetformerHead(BaseDecodeHead):
     def __init__(self, window_size=8, **kwargs):
         super(UnetformerHead, self).__init__(
             input_transform='multiple_select', **kwargs)
-    
+
         encoder_channels = self.in_channels
         decode_channels = self.channels
         dropout = self.dropout_ratio
-        num_classes = self.num_classes
 
         self.decoder = Decoder(
-            encoder_channels, decode_channels, dropout, window_size, num_classes)
+            encoder_channels, decode_channels, dropout, window_size)
 
     def forward(self, x):
         h, w = x[0].size()[-2:]
 
-        # Receive 4 stage backbone feature map: 1/4, 1/8, 1/16, 1/32
         inputs = self._transform_inputs(x)
-
-        # print(inputs[0].shape, inputs[1].shape, inputs[2].shape, inputs[3].shape)
-
-        # res1, res2, res3, res4 = self.backbone(x)
         x = self.decoder(inputs[0], inputs[1], inputs[2], inputs[3], h, w)
         x = self.cls_seg(x)
         return x
