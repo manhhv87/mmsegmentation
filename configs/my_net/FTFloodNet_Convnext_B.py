@@ -7,25 +7,22 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint = 'https://download.openmmlab.com/mmclassification/v0/convnext/downstream/convnext-small_3rdparty_32xb128-noema_in1k_20220301-303e75e3.pth'  # noqa
+checkpoint = 'https://download.openmmlab.com/mmclassification/v0/convnext/downstream/convnext-base_3rdparty_32xb128-noema_in1k_20220301-2a0ee547.pth'  # noqa
 
 model = dict(
     data_preprocessor=data_preprocessor,
 
     backbone=dict(
         type='mmpretrain.ConvNeXt',
-        arch='small',
-        out_indices=[0, 1, 2, 3],
-        drop_path_rate=0.3,
-        layer_scale_init_value=1.0,
-        gap_before_final_norm=False,
+        arch='base',
         init_cfg=dict(
-            type='Pretrained', checkpoint=checkpoint,
-            prefix='backbone.')),
+                type='Pretrained', checkpoint=checkpoint,
+                prefix='backbone.')
+    ),
 
     decode_head=dict(
         type='UnetfloodnetHead',
-        in_channels=[96, 192, 384, 768], 
+        in_channels=[128, 256, 512, 1024], 
         in_index=[0, 1, 2, 3],
         channels=64,
         num_classes=10,
