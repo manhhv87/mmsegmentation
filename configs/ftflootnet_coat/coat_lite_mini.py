@@ -12,20 +12,20 @@ checkpoint = 'https://vcl.ucsd.edu/coat/pretrained/coat_lite_mini_6b4a8ae5.pth' 
 model = dict(
     type='EncoderDecoder',
     data_preprocessor=data_preprocessor,
-    pretrained=None,
 
     backbone=dict(
-        type='CoaT',        
-        patch_size=4, 
-        embed_dims=[64, 128, 320, 512], 
-        serial_depths=[2, 2, 2, 2], 
-        parallel_depth=0, 
-        num_heads=8, 
+        type='CoaT',
+        patch_size=4,
+        embed_dims=[64, 128, 320, 512],
+        serial_depths=[2, 2, 2, 2],
+        parallel_depth=0,
+        num_heads=8,
         mlp_ratios=[8, 8, 4, 4],
         drop_path_rate=0.0,
         out_features=["x1_nocls", "x2_nocls", "x3_nocls", "x4_nocls"],
         return_interm_layers=True,
-        ),
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)
+    ),
 
     decode_head=dict(
         type='UnetfloodnetHead',
@@ -36,8 +36,34 @@ model = dict(
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_name='loss_ce',
                  use_sigmoid=False, loss_weight=0.3),
-            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]),
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)])
+)
 
-    # model training and testing settings
-    train_cfg=dict(),
-    test_cfg=dict(mode='whole'))
+optim_wrapper = dict(
+    _delete_=True,
+    type='AmpOptimWrapper',
+    optimizer=dict(
+        type='AdamW', lr=0.0001, betas=(0.9, 0.999), weight_decay=0.05),
+    paramwise_cfg={
+        'decay_rate': 0.9,
+        'decay_type': 'stage_wise',
+        'num_layers': 12}
+)
+
+param_scheduler = [
+    dict(
+        type='LinearLR', start_factor=1e-6, by_epoch=False, begin=0, end=1500),
+    dict(
+        type='PolyLR',
+        power=1.0,
+        begin=1500,
+        end=160000,
+        eta_min=0.0,
+        by_epoch=False,
+    )
+]
+
+# By default, models are trained on 8 GPUs with 2 images per GPU
+train_dataloader = dict(batch_size=2)
+val_dataloader = dict(batch_size=1)
+test_dataloader = val_dataloader

@@ -6,9 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
-from timm.models.registry import register_model
 
 from einops import rearrange
 from functools import partial
@@ -572,7 +570,7 @@ class CoaT(BaseModule):
             trunc_normal_(self.cls_token2, std=.02)
             trunc_normal_(self.cls_token3, std=.02)
             trunc_normal_(self.cls_token4, std=.02)
-            self.apply(self._init_weights)
+            self.apply(_init_weights)
 
             # Load pretrained weights.
             self.load_state_dict(model_params)
