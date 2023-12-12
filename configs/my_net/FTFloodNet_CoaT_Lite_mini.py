@@ -7,7 +7,7 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint = 'https://vcl.ucsd.edu/coat/pretrained/coat_lite_medium_a750cd63.pth'  # noqa
+checkpoint = 'https://vcl.ucsd.edu/coat/pretrained/coat_lite_mini_6b4a8ae5.pth'  # noqa
 
 model = dict(
     type='EncoderDecoder',
@@ -16,11 +16,11 @@ model = dict(
     backbone=dict(
         type='CoaT',
         patch_size=4,
-        embed_dims=[128, 256, 320, 512],
-        serial_depths=[3, 6, 10, 8],
+        embed_dims=[64, 128, 320, 512],
+        serial_depths=[2, 2, 2, 2],
         parallel_depth=0,
         num_heads=8,
-        mlp_ratios=[4, 4, 4, 4],
+        mlp_ratios=[8, 8, 4, 4],
         drop_path_rate=0.0,
         out_features=["x1_nocls", "x2_nocls", "x3_nocls", "x4_nocls"],
         return_interm_layers=True,
@@ -29,7 +29,7 @@ model = dict(
 
     decode_head=dict(
         type='UnetfloodnetHead',
-        in_channels=[128, 256, 320, 512],
+        in_channels=[64, 128, 320, 512],
         in_index=[0, 1, 2, 3],
         channels=64,
         num_classes=10,
