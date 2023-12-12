@@ -677,8 +677,8 @@ class CoaT(BaseModule):
                 x4_nocls = x4_nocls.reshape(
                     B, H4, W4, -1).permute(0, 3, 1, 2).contiguous()
                 feat_out['x4_nocls'] = x4_nocls
-            # return feat_out
-            return list(feat_out.values())
+            return feat_out
+            # return list(feat_out.values())            
         else:
             x2 = self.norm2(x2)
             x3 = self.norm3(x3)
@@ -694,8 +694,8 @@ class CoaT(BaseModule):
 
     def forward(self, x):
         # Return intermediate features (for down-stream tasks).
-        if self.return_interm_layers:
-            return self.forward_features(x)
+        if self.return_interm_layers:            
+            return list(self.forward_features(x).values())
         else:                               # Return features for classification.
             x = self.forward_features(x)
             x = self.head(x)

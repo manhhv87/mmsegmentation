@@ -29,7 +29,7 @@ model = dict(
 
     decode_head=dict(
         type='UnetfloodnetHead',
-        in_channels=[96, 192, 384, 768],
+        in_channels=[128, 256, 320, 512],
         in_index=[0, 1, 2, 3],
         channels=64,
         num_classes=10,        
