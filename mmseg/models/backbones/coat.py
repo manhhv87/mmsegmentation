@@ -376,24 +376,24 @@ class PatchEmbed(nn.Module):
 class CoaT(BaseModule):
     """ CoaT class. """
 
-    def __init__(self, 
-                 in_channels=3, 
-                 patch_size=16, 
+    def __init__(self,
+                 in_channels=3,
+                 patch_size=16,
                  embed_dims=[64, 128, 320, 512],
-                 num_heads=8,                  
-                 num_classes=1000, 
-                 serial_depths=[3, 4, 6, 3], 
-                 parallel_depth=0,                 
+                 num_heads=8,
+                 num_classes=1000,
+                 serial_depths=[3, 4, 6, 3],
+                 parallel_depth=0,
                  mlp_ratios=[8, 8, 4, 4],
-                 qkv_bias=True, 
-                 qk_scale=None, 
-                 drop_rate=0., 
+                 qkv_bias=True,
+                 qk_scale=None,
+                 drop_rate=0.,
                  attn_drop_rate=0.,
-                 drop_path_rate=0., 
+                 drop_path_rate=0.,
                  norm_layer=partial(nn.LayerNorm, eps=1e-6),
-                 return_interm_layers=True, 
+                 return_interm_layers=True,
                  out_features=["x1_nocls", "x2_nocls", "x3_nocls", "x4_nocls"],
-                 crpe_window={3:2, 5:3, 7:3},
+                 crpe_window={3: 2, 5: 3, 7: 3},
                  pretrained=None,
                  init_cfg=None):
         super().__init__(init_cfg)
@@ -521,7 +521,7 @@ class CoaT(BaseModule):
                 # CoaT-Lite series: Use feature of last scale for classification.
                 self.head = nn.Linear(embed_dims[3], num_classes)
 
-        # (moved to self.init_weights()) 
+        # (moved to self.init_weights())
         # Initialize weights.
         # trunc_normal_(self.cls_token1, std=.02)
         # trunc_normal_(self.cls_token2, std=.02)
@@ -540,7 +540,7 @@ class CoaT(BaseModule):
             elif isinstance(m, nn.LayerNorm):
                 nn.init.constant_(m.bias, 0)
                 nn.init.constant_(m.weight, 1.0)
-                       
+
         if self.init_cfg is None:
             print_log(f'No pre-trained weights for '
                       f'{self.__class__.__name__}, '
@@ -555,16 +555,17 @@ class CoaT(BaseModule):
             assert 'checkpoint' in self.init_cfg, f'Only support ' \
                                                   f'specify `Pretrained` in ' \
                                                   f'`init_cfg` in ' \
-                                                  f'{self.__class__.__name__} '                    
+                                                  f'{self.__class__.__name__} '
             ckpt = CheckpointLoader.load_checkpoint(
                 self.init_cfg['checkpoint'], logger=None, map_location='cpu')
-            
+
             remove_list = [
-                "norm1.weight", "norm1.bias", "norm2.weight", "norm2.bias", "norm3.weight", "norm3.bias", 
+                "norm1.weight", "norm1.bias", "norm2.weight", "norm2.bias", "norm3.weight", "norm3.bias",
                 "norm4.weight", "norm4.bias", "head.weight", "head.bias", "aggregate.weight", "aggregate.bias"
             ]
 
-            model_params = {k: v for k, v in ckpt["model"].items() if k not in remove_list}        
+            model_params = {k: v for k,
+                            v in ckpt["model"].items() if k not in remove_list}
 
             # Initialize weights.
             trunc_normal_(self.cls_token1, std=.02)
@@ -686,7 +687,7 @@ class CoaT(BaseModule):
             x3_cls = x3[:, :1]
             x4_cls = x4[:, :1]
             # Shape: [B, 3, C].
-            merged_cls = torch.cat((x2_cls, x3_cls, x4_cls), dim=1)     
+            merged_cls = torch.cat((x2_cls, x3_cls, x4_cls), dim=1)
             # Shape: [B, C].
             merged_cls = self.aggregate(merged_cls).squeeze(dim=1)
             return merged_cls

@@ -1,13 +1,13 @@
-# model settings
-norm_cfg = dict(type='SyncBN', requires_grad=True)
+_base_ = [
+    '../_base_/models/floodnet_coat_lite.py',
+    '../_base_/datasets/floodnet.py',
+    '../_base_/default_runtime.py',
+    '../_base_/schedules/schedule_80k.py'
+]
 
-data_preprocessor = dict(
-    type='SegDataPreProcessor',
-    mean=[123.675, 116.28, 103.53],
-    std=[58.395, 57.12, 57.375],
-    bgr_to_rgb=True,
-    pad_val=0,
-    seg_pad_val=255)
+crop_size = (512, 512)
+data_preprocessor = dict(size=crop_size)
+checkpoint = 'https://vcl.ucsd.edu/coat/pretrained/coat_lite_mini_6b4a8ae5.pth'  # noqa
 
 model = dict(
     type='EncoderDecoder',
