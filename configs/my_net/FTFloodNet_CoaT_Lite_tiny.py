@@ -31,14 +31,12 @@ model = dict(
         type='UnetfloodnetHead',
         in_channels=[96, 192, 384, 768],
         in_index=[0, 1, 2, 3],
-        channels=64,
-        dropout_ratio=0.1,
-        num_classes=10,
-        norm_cfg=norm_cfg,
-        align_corners=False,
-        loss_decode=dict(
-            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)
-    ),
+        channels=64,        
+        num_classes=10,        
+        loss_decode=[
+            dict(type='CrossEntropyLoss', loss_name='loss_ce',
+                 use_sigmoid=False, loss_weight=0.3),
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.7)]),
 
     # model training and testing settings
     train_cfg=dict(),
