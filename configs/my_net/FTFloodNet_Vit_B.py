@@ -7,19 +7,19 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint = 'https://storage.googleapis.com/vit_models/augreg/Ti_16-i21k-300ep-lr_0.001-aug_none-wd_0.03-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.03-res_224.npz'
-# checkpoint = 'https://dl.fbaipublicfiles.com/deit/deit_tiny_patch16_224-a1311bcf.pth'
+# checkpoint = 'https://storage.googleapis.com/vit_models/augreg/B_16-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.01-res_224.npz'
+checkpoint = 'https://dl.fbaipublicfiles.com/deit/deit_base_patch16_224-b5f2ef4d.pth'
 
 model = dict(
-    tdata_preprocessor=data_preprocessor,
+    data_preprocessor=data_preprocessor,
     backbone=dict(
         type='VisionTransformer',
         img_size=(224, 224),
         patch_size=16,
         in_channels=3,
-        embed_dims=192,
+        embed_dims=768,
         num_layers=12,
-        num_heads=3,
+        num_heads=12,
         out_indices=(2, 5, 8, 11),
         drop_path_rate=0.1,
         attn_drop_rate=0.0,
@@ -29,7 +29,7 @@ model = dict(
 
     decode_head=dict(
         type='UnetfloodnetHead',
-        in_channels=[96, 192, 384, 768],
+        in_channels=[768, 768, 768, 768],
         in_index=[0, 1, 2, 3],
         channels=64,
         dropout_ratio=0.1,

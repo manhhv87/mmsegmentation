@@ -237,8 +237,9 @@ class WS(nn.Module):
             decode_channels, decode_channels, kernel_size=3)
 
     def forward(self, x, res):
-        x = F.interpolate(x, scale_factor=2, mode='bilinear',
-                          align_corners=False)
+        # Neu FloodNet_ViT thi comment, neu ko thi bo
+        # x = F.interpolate(x, scale_factor=2, mode='bilinear',
+        #                   align_corners=False)
         weights = nn.ReLU()(self.weights)
         fuse_weights = weights / (torch.sum(weights, dim=0) + self.eps)
         x = fuse_weights[0] * self.pre_conv(res) + fuse_weights[1] * x
@@ -294,9 +295,6 @@ class Decoder(nn.Module):
                  decode_channels=64,
                  dropout=0.1):
         super(Decoder, self).__init__()
-
-        # self.pre_conv = ConvBN(
-        #     encoder_channels[-1], decode_channels, kernel_size=1)
 
         self.pre_conv = Bottleneck(encoder_channels[-1], decode_channels)
 

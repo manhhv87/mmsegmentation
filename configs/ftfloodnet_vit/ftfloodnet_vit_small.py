@@ -7,11 +7,11 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint = 'https://storage.googleapis.com/vit_models/augreg/S_16-i21k-300ep-lr_0.001-aug_light1-wd_0.03-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.03-res_224.npz'
-# checkpoint = 'https://dl.fbaipublicfiles.com/deit/deit_small_patch16_224-cd65a155.pth'
+# checkpoint = 'https://storage.googleapis.com/vit_models/augreg/S_16-i21k-300ep-lr_0.001-aug_light1-wd_0.03-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.03-res_224.npz'
+checkpoint = 'https://dl.fbaipublicfiles.com/deit/deit_small_patch16_224-cd65a155.pth'
 
 model = dict(
-    tdata_preprocessor=data_preprocessor,
+    data_preprocessor=data_preprocessor,
     backbone=dict(
         type='VisionTransformer',
         img_size=(224, 224),
@@ -29,7 +29,7 @@ model = dict(
 
     decode_head=dict(
         type='UnetfloodnetHead',
-        in_channels=[96, 192, 384, 768],
+        in_channels=[384, 384, 384, 384],
         in_index=[0, 1, 2, 3],
         channels=64,
         dropout_ratio=0.1,

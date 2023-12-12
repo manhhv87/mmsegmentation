@@ -32,6 +32,7 @@ from .abcnet import ABCNet
 from .rest_v2 import ResTV2
 from .dbunet import DBUNet
 from .lmaswin import LMASwin
+from .coat import CoaT
 
 __all__ = [
     'ResNet', 'ResNetV1c', 'ResNetV1d', 'ResNeXt', 'HRNet', 'FastSCNN',
@@ -40,5 +41,5 @@ __all__ = [
     'BiSeNetV1', 'BiSeNetV2', 'ICNet', 'TIMMBackbone', 'ERFNet', 'PCPVT',
     'SVT', 'STDCNet', 'STDCContextPathNet', 'BEiT', 'MAE', 'PIDNet', 'MSCAN',
     'DDRNet', 'VPD', 'CSWin', 'MTUNet', 'SmaAt_UNet', 'BANet', 'ABCNet',
-    'ResTV2', 'LMASwin', 'DBUNet'
+    'ResTV2', 'LMASwin', 'DBUNet', 'CoaT'
 ]
