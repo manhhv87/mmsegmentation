@@ -296,6 +296,7 @@ class Decoder(nn.Module):
                  dropout=0.1):
         super(Decoder, self).__init__()
 
+        # self.pre_conv = ConvBN(encoder_channels[-1], decode_channels, kernel_size=1)
         self.pre_conv = Bottleneck(encoder_channels[-1], decode_channels)
 
         # GLTB, number of heads h are both set to 8
