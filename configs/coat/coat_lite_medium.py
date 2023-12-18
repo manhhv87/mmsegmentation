@@ -27,7 +27,7 @@ model = dict(
     ),
 
     decode_head=dict(
-        type='GeneralHead',
+        type='ClsHead',
         in_channels=512,
         channels=512,        
         num_classes=10,

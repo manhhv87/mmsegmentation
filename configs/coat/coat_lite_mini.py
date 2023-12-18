@@ -7,7 +7,7 @@ _base_ = [
 
 crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
-checkpoint = 'https://vcl.ucsd.edu/coat/pretrained/coat_lite_medium_a750cd63.pth'  # noqa
+checkpoint = 'https://vcl.ucsd.edu/coat/pretrained/coat_lite_mini_6b4a8ae5.pth'  # noqa
 
 model = dict(
     type='EncoderDecoder',
@@ -27,7 +27,7 @@ model = dict(
     ),
 
     decode_head=dict(
-        type='GeneralHead',
+        type='ClsHead',
         in_channels=512,
         channels=512,        
         num_classes=10,
