@@ -514,10 +514,10 @@ class CoaT(BaseModule):
                 assert embed_dims[1] == embed_dims[2] == embed_dims[3]
                 self.aggregate = torch.nn.Conv1d(
                     in_channels=3, out_channels=1, kernel_size=1)
-                self.head = nn.Linear(embed_dims[3], num_classes)
-            else:
+                # self.head = nn.Linear(embed_dims[3], num_classes)
+            # else:
                 # CoaT-Lite series: Use feature of last scale for classification.
-                self.head = nn.Linear(embed_dims[3], num_classes)
+                # self.head = nn.Linear(embed_dims[3], num_classes)
 
         # (moved to self.init_weights())
         # Initialize weights.
@@ -696,5 +696,5 @@ class CoaT(BaseModule):
             return list(self.forward_features(x).values())
         else:                               # Return features for classification.
             x = self.forward_features(x)
-            x = self.head(x)
+            # x = self.head(x)
             return x
