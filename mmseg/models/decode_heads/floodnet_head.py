@@ -176,7 +176,7 @@ class GlobalLocal(nn.Module):
         # global branch
         self.glb = Bottleneck(dim, dim)
 
-        self.proj = nn.Sequential(nn.Conv2d(dim, dim, kernel_size=3),
+        self.proj = nn.Sequential(nn.Conv2d(dim, dim, kernel_size=3, padding=1),
                                   nn.BatchNorm2d(dim),
                                   nn.Conv2d(dim, dim, kernel_size=1, bias=False))
 
