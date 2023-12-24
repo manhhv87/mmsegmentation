@@ -44,6 +44,7 @@ from .cls_head import ClsHead
 from .manet_head import MANET
 from .dbunet_head import DBUNetHead
 from .dcswin_head import DCSwinHead
+from .linear_cls import LinearHead
 
 # Generative Semantic Segmentation Heads
 from .generative_segmentation_head_ff import GenerativeSegHeadFF
@@ -60,7 +61,7 @@ __all__ = [
     'KernelUpdateHead', 'KernelUpdator', 'MaskFormerHead', 'Mask2FormerHead',
     'LightHamHead', 'PIDHead', 'DDRHead', 'VPDDepthHead', 'SideAdapterCLIPHead',
     'UnetformerHead', 'UnetfloodnetHead', 'GeneralHead', 'A2FPN', 'myFCNHead',
-    'ClsHead', 'MANET', 'DBUNetHead', 'DCSwinHead',
+    'ClsHead', 'MANET', 'DBUNetHead', 'DCSwinHead', 'LinearHead', 
 
     # Generative Semantic Segmentation Heads
     'GenerativeSegHeadFF',
