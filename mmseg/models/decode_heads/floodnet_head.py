@@ -73,111 +73,23 @@ class SeparableConvBNReLU(nn.Sequential):
         )
 
 
-# https://towardsdatascience.com/multilayer-perceptron-explained-with-a-real-life-example-and-python-code-sentiment-analysis-cb408ee93141
-class Mlp(nn.Module):
-    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.ReLU6, drop=0.):
-        super().__init__()
-        out_features = out_features or in_features
-        hidden_features = hidden_features or in_features
-        self.fc1 = nn.Conv2d(in_features, hidden_features,
-                             kernel_size=1, stride=1, padding=0, bias=True)
-        self.act = act_layer()
-        self.fc2 = nn.Conv2d(hidden_features, out_features,
-                             kernel_size=1, stride=1, padding=0, bias=True)
-        self.drop = nn.Dropout(drop, inplace=True)
-
-    def forward(self, x):
-        x = self.fc1(x)
-        x = self.act(x)
-        x = self.drop(x)
-        x = self.fc2(x)
-        x = self.drop(x)
-        return x
-
-
-# class Bottleneck(nn.Module):
-#     def __init__(self, inplanes, planes, stride=1):
-#         super(Bottleneck, self).__init__()
-
-#         # Firstly, the channel dimension is increased by 1 * 1 convolution,
-#         # and the number of channels to be trained is fixed at the early stage of Bottleneck.
-#         self.conv1 = nn.Conv2d(
-#             inplanes, planes, kernel_size=1, stride=stride, groups=4, bias=False)
-#         self.bn1 = nn.BatchNorm2d(planes)
-
-#         # Then, 3 * 3 convolution is used to realize the first feature extraction.
-#         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3,
-#                                stride=1, padding=1, groups=2, bias=False)
-#         self.bn2 = nn.BatchNorm2d(planes)
-
-#         # Next, 1 * 1 convolution is employed again to achieve feature information fusion with the same number of channels.
-#         self.conv3 = nn.Conv2d(planes, planes, kernel_size=1,
-#                                stride=1, groups=4, bias=False)
-#         self.bn3 = nn.BatchNorm2d(planes)
-
-#         # Finally, 3 * 3 and 1 * 1 convolutions are performed respectively to realize feature re-extraction and information re-fusion.
-#         self.conv4 = nn.Conv2d(planes, planes, kernel_size=3,
-#                                stride=1, padding=1, groups=2, bias=False)
-#         self.bn4 = nn.BatchNorm2d(planes)
-
-#         self.conv5 = nn.Conv2d(planes, planes, kernel_size=1,
-#                                stride=1, groups=4, bias=False)
-#         self.bn5 = nn.BatchNorm2d(planes)
-
-#         self.relu = nn.ReLU(inplace=True)
-
-#     def forward(self, x):
-#         # Firstly, the channel dimension is increased by 1 * 1 convolution,
-#         # and the number of channels to be trained is fixed at the early stage of Bottleneck.
-#         out = self.conv1(x)
-#         out = self.bn1(out)
-#         out = self.relu(out)
-
-#         residual1 = out
-
-#         # Then, 3 * 3 convolution is used to realize the first feature extraction.
-#         out = self.conv2(out)
-#         out = self.bn2(out)
-#         out = self.relu(out)
-
-#         residual2 = out
-
-#         # Next, 1 * 1 convolution is employed again to achieve feature information fusion with the same number of channels.
-#         out = self.conv3(out)
-#         out = self.bn3(out)
-#         out = self.relu(out)
-
-#         out = out + residual1
-
-#         # Finally, 3 * 3 convolution is performed to realize feature re-extraction.
-#         out = self.conv4(out)
-#         out = self.bn4(out)
-#         out = self.relu(out)
-
-#         out = out + residual2
-
-#         # Finally, 1 * 1 convolution is used to realize information re-fusion.
-#         out = self.conv5(out)
-#         out = self.bn5(out)
-#         out = self.relu(out)
-
-#         return out
-
-
 class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes):
         super(Bottleneck, self).__init__()
 
-        self.cblock1 = SeparableConvBNReLU(in_channels=inplanes, out_channels=planes)        
-        self.cblock2 = SeparableConvBNReLU(in_channels=planes, out_channels=planes)        
-        self.cblock3 = SeparableConvBNReLU(in_channels=planes, out_channels=planes)        
+        self.cblock1 = SeparableConvBNReLU(
+            in_channels=inplanes, out_channels=planes)
+        self.cblock2 = SeparableConvBNReLU(
+            in_channels=planes, out_channels=planes)
+        self.cblock3 = SeparableConvBNReLU(
+            in_channels=planes, out_channels=planes)
 
     def forward(self, x):
         x = self.cblock1(x)
         x = self.cblock2(x)
         out = self.cblock3(x)
         return out
-    
+
 
 # Global-local
 class GlobalLocal(nn.Module):
@@ -191,9 +103,6 @@ class GlobalLocal(nn.Module):
         # global branch
         self.glb = Bottleneck(dim, dim)
 
-        # self.proj = nn.Sequential(nn.Conv2d(dim, dim, kernel_size=3, padding=1),
-        #                           nn.BatchNorm2d(dim),
-        #                           nn.Conv2d(dim, dim, kernel_size=1, bias=False))
         self.proj = SeparableConvBN(dim, dim, kernel_size=3)
 
     def forward(self, x):
@@ -372,25 +281,7 @@ class FeatureRefinementHead(nn.Module):
     def __init__(self, decode_channels=64):
         super().__init__()
 
-        # spatial path  utilizes a depth-wise convolution to produce a spatial-wise attentional map
-        # S ∈ R (h×w×1), where h and w represent the spatial resolution of the feature map.
-        # self.pa = nn.Sequential(nn.Conv2d(decode_channels, decode_channels, kernel_size=3, padding=1, groups=decode_channels),
-        #                         nn.Sigmoid())
-
-        # channel path employs a global average pooling layer to generate a channel-wise attentional
-        # map C ∈ R1×1×c, where c denotes the channel dimension. The reduce & expand operation contains
-        # two 1 × 1 convolutional layers, which first reduces the channel dimension c by a factor of 4
-        # and then expands it to the original.
-        # self.ca = nn.Sequential(nn.AdaptiveAvgPool2d(1),    # Global Average Pool
-        #                         Conv(decode_channels, decode_channels //
-        #                              16, kernel_size=1),    # Reduce
-        #                         nn.ReLU6(),
-        #                         Conv(decode_channels // 16, decode_channels,
-        #                              kernel_size=1),    # Expand
-        #                         nn.Sigmoid())
-
         self.cbam = CBAM(decode_channels)
-
         self.shortcut = ConvBN(decode_channels, decode_channels, kernel_size=1)
         self.proj = SeparableConvBN(
             decode_channels, decode_channels, kernel_size=3)
@@ -398,14 +289,7 @@ class FeatureRefinementHead(nn.Module):
 
     def forward(self, x):
         shortcut = self.shortcut(x)
-        # pa = self.pa(x) * x
-        # ca = self.ca(x) * x
-
-        # The attentional features generated by the two paths are further fused using a sum operation.
-        # x = pa + ca
         x = self.cbam(x)
-
-        # A post-processing 1 × 1 convolutional layer and an upsampling operation are applied to produce the final segmentation map.
         x = self.proj(x) + shortcut
         x = self.act(x)
 
@@ -418,7 +302,8 @@ class Decoder(nn.Module):
                  decode_channels=64):
         super(Decoder, self).__init__()
 
-        self.pre_conv = ConvBN(encoder_channels[-1], decode_channels, kernel_size=1)
+        self.pre_conv = ConvBN(
+            encoder_channels[-1], decode_channels, kernel_size=1)
         # self.pre_conv = Bottleneck(encoder_channels[-1], decode_channels)
 
         # GLTB, number of heads h are both set to 8
@@ -436,8 +321,6 @@ class Decoder(nn.Module):
 
         self.frh = FeatureRefinementHead(decode_channels)
 
-        # self.segmentation_head = nn.Sequential(ConvBNReLU(decode_channels, decode_channels),
-        #                                        nn.Dropout2d(p=dropout, inplace=True))
         self.init_weight()
 
     def forward(self, res1, res2, res3, res4, h, w):
@@ -451,7 +334,6 @@ class Decoder(nn.Module):
         x = self.ws1(x, res1)
 
         x = self.frh(x)
-        # x = self.segmentation_head(x)
 
         x = F.interpolate(x, size=(h, w), mode='bilinear', align_corners=False)
         return x
