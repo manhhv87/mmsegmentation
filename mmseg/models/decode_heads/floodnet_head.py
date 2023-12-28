@@ -95,74 +95,89 @@ class Mlp(nn.Module):
         return x
 
 
+# class Bottleneck(nn.Module):
+#     def __init__(self, inplanes, planes, stride=1):
+#         super(Bottleneck, self).__init__()
+
+#         # Firstly, the channel dimension is increased by 1 * 1 convolution,
+#         # and the number of channels to be trained is fixed at the early stage of Bottleneck.
+#         self.conv1 = nn.Conv2d(
+#             inplanes, planes, kernel_size=1, stride=stride, groups=4, bias=False)
+#         self.bn1 = nn.BatchNorm2d(planes)
+
+#         # Then, 3 * 3 convolution is used to realize the first feature extraction.
+#         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3,
+#                                stride=1, padding=1, groups=2, bias=False)
+#         self.bn2 = nn.BatchNorm2d(planes)
+
+#         # Next, 1 * 1 convolution is employed again to achieve feature information fusion with the same number of channels.
+#         self.conv3 = nn.Conv2d(planes, planes, kernel_size=1,
+#                                stride=1, groups=4, bias=False)
+#         self.bn3 = nn.BatchNorm2d(planes)
+
+#         # Finally, 3 * 3 and 1 * 1 convolutions are performed respectively to realize feature re-extraction and information re-fusion.
+#         self.conv4 = nn.Conv2d(planes, planes, kernel_size=3,
+#                                stride=1, padding=1, groups=2, bias=False)
+#         self.bn4 = nn.BatchNorm2d(planes)
+
+#         self.conv5 = nn.Conv2d(planes, planes, kernel_size=1,
+#                                stride=1, groups=4, bias=False)
+#         self.bn5 = nn.BatchNorm2d(planes)
+
+#         self.relu = nn.ReLU(inplace=True)
+
+#     def forward(self, x):
+#         # Firstly, the channel dimension is increased by 1 * 1 convolution,
+#         # and the number of channels to be trained is fixed at the early stage of Bottleneck.
+#         out = self.conv1(x)
+#         out = self.bn1(out)
+#         out = self.relu(out)
+
+#         residual1 = out
+
+#         # Then, 3 * 3 convolution is used to realize the first feature extraction.
+#         out = self.conv2(out)
+#         out = self.bn2(out)
+#         out = self.relu(out)
+
+#         residual2 = out
+
+#         # Next, 1 * 1 convolution is employed again to achieve feature information fusion with the same number of channels.
+#         out = self.conv3(out)
+#         out = self.bn3(out)
+#         out = self.relu(out)
+
+#         out = out + residual1
+
+#         # Finally, 3 * 3 convolution is performed to realize feature re-extraction.
+#         out = self.conv4(out)
+#         out = self.bn4(out)
+#         out = self.relu(out)
+
+#         out = out + residual2
+
+#         # Finally, 1 * 1 convolution is used to realize information re-fusion.
+#         out = self.conv5(out)
+#         out = self.bn5(out)
+#         out = self.relu(out)
+
+#         return out
+
+
 class Bottleneck(nn.Module):
-    def __init__(self, inplanes, planes, stride=1):
+    def __init__(self, inplanes, planes):
         super(Bottleneck, self).__init__()
 
-        # Firstly, the channel dimension is increased by 1 * 1 convolution,
-        # and the number of channels to be trained is fixed at the early stage of Bottleneck.
-        self.conv1 = nn.Conv2d(
-            inplanes, planes, kernel_size=1, stride=stride, groups=2, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
-
-        # Then, 3 * 3 convolution is used to realize the first feature extraction.
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3,
-                               stride=1, padding=1, groups=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
-
-        # Next, 1 * 1 convolution is employed again to achieve feature information fusion with the same number of channels.
-        self.conv3 = nn.Conv2d(planes, planes, kernel_size=1,
-                               stride=1, groups=2, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes)
-
-        # Finally, 3 * 3 and 1 * 1 convolutions are performed respectively to realize feature re-extraction and information re-fusion.
-        self.conv4 = nn.Conv2d(planes, planes, kernel_size=3,
-                               stride=1, padding=1, groups=1, bias=False)
-        self.bn4 = nn.BatchNorm2d(planes)
-
-        self.conv5 = nn.Conv2d(planes, planes, kernel_size=1,
-                               stride=1, groups=2, bias=False)
-        self.bn5 = nn.BatchNorm2d(planes)
-
-        self.relu = nn.ReLU(inplace=True)
+        self.cblock1 = SeparableConvBNReLU(in_channels=inplanes, out_channels=planes)        
+        self.cblock2 = SeparableConvBNReLU(in_channels=planes, out_channels=planes)        
+        self.cblock3 = SeparableConvBNReLU(in_channels=planes, out_channels=planes)        
 
     def forward(self, x):
-        # Firstly, the channel dimension is increased by 1 * 1 convolution,
-        # and the number of channels to be trained is fixed at the early stage of Bottleneck.
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-
-        residual1 = out
-
-        # Then, 3 * 3 convolution is used to realize the first feature extraction.
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = self.relu(out)
-
-        residual2 = out
-
-        # Next, 1 * 1 convolution is employed again to achieve feature information fusion with the same number of channels.
-        out = self.conv3(out)
-        out = self.bn3(out)
-        out = self.relu(out)
-
-        out = out + residual1
-
-        # Finally, 3 * 3 convolution is performed to realize feature re-extraction.
-        out = self.conv4(out)
-        out = self.bn4(out)
-        out = self.relu(out)
-
-        out = out + residual2
-
-        # Finally, 1 * 1 convolution is used to realize information re-fusion.
-        out = self.conv5(out)
-        out = self.bn5(out)
-        out = self.relu(out)
-
+        x = self.cblock1(x)
+        x = self.cblock2(x)
+        out = self.cblock3(x)
         return out
-
+    
 
 # Global-local
 class GlobalLocal(nn.Module):
@@ -176,9 +191,10 @@ class GlobalLocal(nn.Module):
         # global branch
         self.glb = Bottleneck(dim, dim)
 
-        self.proj = nn.Sequential(nn.Conv2d(dim, dim, kernel_size=3, padding=1),
-                                  nn.BatchNorm2d(dim),
-                                  nn.Conv2d(dim, dim, kernel_size=1, bias=False))
+        # self.proj = nn.Sequential(nn.Conv2d(dim, dim, kernel_size=3, padding=1),
+        #                           nn.BatchNorm2d(dim),
+        #                           nn.Conv2d(dim, dim, kernel_size=1, bias=False))
+        self.proj = SeparableConvBN(dim, dim, kernel_size=3)
 
     def forward(self, x):
         """
@@ -202,23 +218,16 @@ class GlobalLocal(nn.Module):
 
 # Global-local transformer block (GLTB - ref. Fig. 2)
 class GLTB(nn.Module):
-    def __init__(self, dim=256, mlp_ratio=4., drop=0., drop_path=0.,
-                 act_layer=nn.ReLU6, norm_layer=nn.BatchNorm2d):
+    def __init__(self, dim=256, drop_path=0., norm_layer=nn.BatchNorm2d):
         super().__init__()
         self.norm1 = norm_layer(dim)
         self.glc = GlobalLocal(dim)
 
         self.drop_path = DropPath(
             drop_path) if drop_path > 0. else nn.Identity()
-        # mlp_hidden_dim = int(dim * mlp_ratio)
-        # self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim,
-        #                out_features=dim, act_layer=act_layer, drop=drop)
-        # self.norm2 = norm_layer(dim)
 
     def forward(self, x):
         x = x + self.drop_path(self.glc(self.norm1(x)))
-        # x = x + self.drop_path(self.mlp(self.norm2(x)))
-
         return x
 
 
@@ -344,7 +353,7 @@ class SpatialGate(nn.Module):
 
 
 class CBAM(nn.Module):
-    def __init__(self, gate_channels, reduction_ratio=16, pool_types=['avg', 'max'], no_spatial=False):
+    def __init__(self, gate_channels, reduction_ratio=16, pool_types=['lp', 'lse'], no_spatial=False):
         super(CBAM, self).__init__()
         self.ChannelGate = ChannelGate(
             gate_channels, reduction_ratio, pool_types)
@@ -409,8 +418,8 @@ class Decoder(nn.Module):
                  decode_channels=64):
         super(Decoder, self).__init__()
 
-        # self.pre_conv = ConvBN(encoder_channels[-1], decode_channels, kernel_size=1)
-        self.pre_conv = Bottleneck(encoder_channels[-1], decode_channels)
+        self.pre_conv = ConvBN(encoder_channels[-1], decode_channels, kernel_size=1)
+        # self.pre_conv = Bottleneck(encoder_channels[-1], decode_channels)
 
         # GLTB, number of heads h are both set to 8
         self.glbt3 = GLTB(dim=decode_channels)
