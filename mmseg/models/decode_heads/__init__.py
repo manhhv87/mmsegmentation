@@ -47,9 +47,9 @@ from .dcswin_head import DCSwinHead
 from .linear_cls import LinearHead
 
 # Generative Semantic Segmentation Heads
-from .generative_segmentation_head_ff import GenerativeSegHeadFF
-from .generative_segmentation_head_ftw import GenerativeSegHeadFTW
-from .generative_segmentation_head_ff_single_fusion import GenerativeSegHeadFFSingleFusion
+# from .generative_segmentation_head_ff import GenerativeSegHeadFF
+# from .generative_segmentation_head_ftw import GenerativeSegHeadFTW
+# from .generative_segmentation_head_ff_single_fusion import GenerativeSegHeadFFSingleFusion
 
 __all__ = [
     'FCNHead', 'PSPHead', 'ASPPHead', 'PSAHead', 'NLHead', 'GCHead', 'CCHead',
@@ -64,7 +64,7 @@ __all__ = [
     'ClsHead', 'MANET', 'DBUNetHead', 'DCSwinHead', 'LinearHead', 
 
     # Generative Semantic Segmentation Heads
-    'GenerativeSegHeadFF',
-    'GenerativeSegHeadFFSingleFusion',
-    'GenerativeSegHeadFTW',
+    # 'GenerativeSegHeadFF',
+    # 'GenerativeSegHeadFFSingleFusion',
+    # 'GenerativeSegHeadFTW',
 ]
